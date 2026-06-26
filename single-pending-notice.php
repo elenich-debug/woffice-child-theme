@@ -116,7 +116,7 @@ get_header();
 						// Проверяем, является ли текущая запись типом "request"
 						if (get_post_type() === 'request') {
 							// Если да, отображаем блок
-							echo '<div class="note">Note: Community members need a <a href="http://3d-stuff.community/wiki/community-membership-structure/">Subscriber </a>role or higher to complete requests and vote.</div>';
+							echo '<div class="note">Note: Community members need a <a href="https://3d-stuff.community/wiki/community-membership-structure/">Contributor </a>role or higher to complete requests and vote.</div>';
 						}
 						?>
 											<?php if (is_single() && get_post_type() == 'post' && !woffice_validate_bool_option($hide_author_box)) : ?>
