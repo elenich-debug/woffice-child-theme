@@ -1,0 +1,19 @@
+.tooltip-box {
+  position: absolute;
+  background-color: #222;
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 5px;
+  font-size: 14px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 9999;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+#i-have-a-tooltip {
+        text-align: center;
+        margin: 30px 0 0 0;
+    }
+    

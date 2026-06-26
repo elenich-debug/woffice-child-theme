@@ -1,0 +1,16 @@
+# Системный мусор
+.DS_Store
+Thumbs.db
+*.log
+
+# Временные файлы Sass / Компиляторов (на будущее)
+.sass-cache/
+*.css.map
+
+# Папки зависимостей (если появятся)
+node_modules/
+bower_components/
+
+# Скрытые папки редакторов кода
+.idea/
+.vscode/

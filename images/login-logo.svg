@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 80" width="300" height="80">
+    <text x="150" y="52" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="36" font-weight="600" fill="#212529" letter-spacing="-0.5" text-anchor="middle">
+        dev.<tspan fill="#b5bba6" font-weight="800">3d</tspan>-stuff
+    </text>
+</svg>
