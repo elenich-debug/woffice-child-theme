@@ -11,22 +11,6 @@ function woffice_child_scripts() {
 	
 }
 add_action('wp_enqueue_scripts', 'woffice_child_scripts', 30);
-
-/**
- * Force HTTP on localhost to prevent SSL protocol errors
- */
-function woffice_child_force_http_on_localhost($url) {
-    if (strpos($url, 'localhost') !== false) {
-        return str_replace('https://', 'http://', $url);
-    }
-    return $url;
-}
-add_filter('template_directory_uri', 'woffice_child_force_http_on_localhost', 99);
-add_filter('stylesheet_directory_uri', 'woffice_child_force_http_on_localhost', 99);
-add_filter('home_url', 'woffice_child_force_http_on_localhost', 99);
-add_filter('site_url', 'woffice_child_force_http_on_localhost', 99);
-add_filter('plugins_url', 'woffice_child_force_http_on_localhost', 99);
-
 add_action('after_setup_theme', function () {
 
 	// Load custom translation file for the parent theme
@@ -44,6 +28,12 @@ add_action('admin_notices', function() {
         </div>';
     }
 });
+
+// Шорткод плейлиста со стилями
+function pl_short() {
+    return '<img style="margin-top: -29px; opacity: 0.35; width: 34px; position: absolute; right: 0; margin-right: 72px;" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIiBmaWxsPSJub25lIj48cGF0aCBkPSJNMjUsMjVDNTAsMjUgNzAsNDUgNzAsNzUiIHN0cm9rZT0iIzhhOGE4YSIgc3Ryb2tlLXdpZHRoPSIxMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PHBhdGggZD0iTTUzLDYzTDcwLDgwTDg3LDYzIiBzdHJva2U9IiM4YThhOGEiIHN0cm9rZS13aWR0aD0iMTIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvc3ZnPg==" alt="">';
+}
+add_shortcode('playlist', 'pl_short');
 
 // для закрузки больших файлов в Gravity Forms
 add_filter( 'gform_plupload_settings', function( $settings, $form_id, $field ) {
@@ -822,15 +812,6 @@ function remove_wp_logo_login() {
     </style>';
 }
 add_action('login_enqueue_scripts', 'remove_wp_logo_login');
-
- // Шорткод плейлиста со стилями
-function pl_short() {
-return '<img style="margin-top: -29px; opacity: 0.35; width: 34px; position: absolute; right: 0; margin-right: 72px;" src="data:image/png;base64,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" alt="Will insert">';
-}
-add_shortcode('playlist', 'pl_short');
-
-
-
 
 //  отключает алмаз и Daz-Poser при сохранении поста
 function my_remove_taxonomies_on_save($post_id) {
@@ -1884,7 +1865,7 @@ function create_request_block_from_custom_fields($atts) {
     ?>
     <div class="reward-block-container">
         <div class="reward-text-center">
-            Earn a <span class="pulse-diamond"><?php echo esc_html($price_value); ?></span> diamond reward by fulfilling the request
+            EARN <span class="pulse-diamond"><?php echo esc_html($price_value); ?></span> DIAMONDS BY FULFILLING THIS REQUEST
         </div>
         <?php if (!empty($website_url)) : ?>
             <a href="<?php echo esc_url($website_url); ?>" class="reward-btn" rel="nofollow noopener noreferrer" target="_blank">
@@ -2412,12 +2393,28 @@ function my_theme_replace_content_with_notice( $content ) {
             
             // Формируем наше новое HTML-уведомление
             $notice_html = '
-            <div class="entry-content-notice" style="padding: 30px; border: 2px dashed #ffc107; text-align: center; margin: 20px 0; background-color: #fffaf0;">
-                <h2 style="margin-top:0px;">⏳ Content will be available soon</h2><br>
-                <p>This post was submitted by a community member and is now going through a moderator review.</p> 
-                <p>We’re making sure everything matches the description, is nicely formatted, and contains no harmful files.</p>
-                <p>Just a little patience — once the review is complete, the content will be available to everyone.</p>
-                <p><strong>👉 Bookmark this page to quickly access it anytime from your profile.</strong></p>
+            <div class="gf-confirmation-container" style="padding: 20px 0;">
+                <div class="gf-confirmation-card horizontal" style="max-width: 100%; border-color: #fef3c7; box-shadow: 0 10px 30px rgba(245, 158, 11, 0.05);">
+                    <div style="width: 80px; height: 80px; border-radius: 50%; background: #fffbeb; display: flex; justify-content: center; align-items: center; flex-shrink: 0; margin-bottom: 0;">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:36px; height:36px;">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                    </div>
+                    <div class="gf-confirmation-content">
+                        <h2 class="gf-confirmation-title">Content will be available soon</h2>
+                        <p class="gf-confirmation-subtitle" style="margin-bottom: 24px;">This post was submitted by a community member and is now going through a moderator review. We’re making sure everything matches the description, is nicely formatted, and contains no harmful files.<br><br>Just a little patience — once the review is complete, the content will be available to everyone.</p>
+                        <div class="gf-confirmation-badge-group">
+                            <span class="gf-badge" style="background: #fffbeb; color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.2);">
+                                <span class="gf-badge-dot" style="background: #f59e0b;"></span>
+                                Under Review
+                            </span>
+                            <span class="gf-badge gf-badge-info" style="background: #f8fafc;">
+                                Bookmark this page to quickly access it later
+                            </span>
+                        </div>
+                    </div>
+                </div>
             </div>';
             
             // Отдаем HTTP-статус 200 OK для SEO
@@ -3720,6 +3717,20 @@ function custom_yoast_noindex_for_unprocessed_posts( $robots ) {
     }
 
     return $robots;
+}
+
+/**
+ * Fix YouTube playlist oEmbed issues caused by HTML entities (e.g. &amp; instead of &)
+ * in the editor post content.
+ */
+add_filter( 'oembed_fetch_url', 'woffice_child_fix_youtube_playlist_oembed', 10, 3 );
+function woffice_child_fix_youtube_playlist_oembed( $provider, $url, $args ) {
+    if ( strpos( $provider, 'youtube.com' ) !== false || strpos( $provider, 'youtu.be' ) !== false ) {
+        // html_entity_decode will convert &amp; to & in the playlist URL parameters
+        $decoded_url = html_entity_decode( $url );
+        $provider = add_query_arg( 'url', $decoded_url, $provider );
+    }
+    return $provider;
 }
 
 
