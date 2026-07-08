@@ -1,14 +1,18 @@
 <?php
 function woffice_child_scripts() {
-	if ( ! is_admin() && ! in_array( $GLOBALS['pagenow'], array( 'wp-login.php', 'wp-register.php' ) ) ) {
-		$theme_info = wp_get_theme();
-		wp_enqueue_style( 'woffice-child-stylesheet', get_stylesheet_uri(), array(), WOFFICE_THEME_VERSION );
-	}
+    if ( ! is_admin() && ! in_array( $GLOBALS['pagenow'], array( 'wp-login.php', 'wp-register.php' ) ) ) {
+        $theme_info = wp_get_theme();
 
-	if ( is_rtl() ) {
-		wp_enqueue_style( 'woffice-child-rtl', get_template_directory_uri() . '/rtl.css', array(),WOFFICE_THEME_VERSION );
-	}
-	
+        // Получаем точное время последнего изменения вашего style.css
+        $css_version = filemtime( get_stylesheet_directory() . '/style.css' );
+
+        // Передаем переменную $css_version вместо WOFFICE_THEME_VERSION
+        wp_enqueue_style( 'woffice-child-stylesheet', get_stylesheet_uri(), array(), $css_version );
+    }
+
+    if ( is_rtl() ) {
+        wp_enqueue_style( 'woffice-child-rtl', get_template_directory_uri() . '/rtl.css', array(), WOFFICE_THEME_VERSION );
+    }
 }
 add_action('wp_enqueue_scripts', 'woffice_child_scripts', 30);
 add_action('after_setup_theme', function () {
@@ -19,6 +23,16 @@ add_action('after_setup_theme', function () {
 	// Load translation file for the child theme
 	load_child_theme_textdomain( 'woffice', get_stylesheet_directory() . '/languages' );
 });
+
+// Изменяем email отправителя
+add_filter( 'wp_mail_from', function( $original_email_address ) {
+    return 'support@3d-stuff.community'; // Укажи нужный рабочий ящик
+} );
+
+// Изменяем имя отправителя
+add_filter( 'wp_mail_from_name', function( $original_email_from ) {
+    return 'Bogus'; // Укажи желаемое имя бренда/сайта
+} );
 
 // Напоминание https://aistudio.google.com/app/prompts?state=%7B%22ids%22:%5B%221D3UBsETfkjHnECMviGMMEfaIbt0Pmt0z%22%5D,%22action%22:%22open%22,%22userId%22:%22106426325981430699849%22,%22resourceKeys%22:%7B%7D%7D&usp=sharing
 add_action('admin_notices', function() {
@@ -3228,7 +3242,7 @@ function redirect_old_cpt_to_new_destination() {
                 if ( ! empty( $bundle_posts ) ) {
                     $target_post_id = $bundle_posts[0]->ID;
                 } else {
-                    // Если бандла нет, проверяем, не стал ли он уже обычным постом
+                    // Если бандла нет, проверяем, не стал ли он уже обычным постом по имени
                     $standard_posts = get_posts( array(
                         'name'           => $slug,
                         'post_type'      => 'post',
@@ -3238,6 +3252,20 @@ function redirect_old_cpt_to_new_destination() {
                     
                     if ( ! empty( $standard_posts ) ) {
                         $target_post_id = $standard_posts[0]->ID;
+                    } else {
+                        // Если по имени не нашли (например, из-за суффикса -2),
+                        // ищем по скрытому мета-полю _fulfilled_request_slug
+                        $meta_posts = get_posts( array(
+                            'meta_key'       => '_fulfilled_request_slug',
+                            'meta_value'     => $slug,
+                            'post_type'      => 'post',
+                            'post_status'    => 'publish',
+                            'posts_per_page' => 1
+                        ) );
+                        
+                        if ( ! empty( $meta_posts ) ) {
+                            $target_post_id = $meta_posts[0]->ID;
+                        }
                     }
                 }
             } 

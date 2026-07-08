@@ -273,57 +273,57 @@ if (get_post_type() === 'request') {
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Обработка нажатий клавиш
-    document.addEventListener('keydown', function(event) {
-        // Стрелка влево (предыдущий пост)
-        if (event.key === 'ArrowLeft') {
-            const prevLink = document.querySelector('.blog-next-page .prev-post');
-            if (prevLink) {
-                window.location.href = prevLink.getAttribute('data-post-url');
-            }
-        }
-        
-        // Стрелка вправо (следующий пост)
-        if (event.key === 'ArrowRight') {
-            const nextLink = document.querySelector('.blog-next-page .next-post');
-            if (nextLink) {
-                window.location.href = nextLink.getAttribute('data-post-url');
-            }
-        }
-    });
-});
-</script>
+    // --- 1. Логика переключения типа пагинации ---
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
+    // Надежная функция получения куки
     const getCookie = (name) => {
-        const match = document.cookie.match(new RegExp(`(^| )${name}=([^;]+)`));
-        return match ? decodeURIComponent(match[2]) : 'date';
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) {
+            return decodeURIComponent(parts.pop().split(';').shift());
+        }
+        return 'date'; // значение по умолчанию
     };
 
     const setCookie = (name, value) => {
         document.cookie = `${name}=${encodeURIComponent(value)}; max-age=31536000; path=/; SameSite=Lax`;
     };
 
-    // Set current selection
     const currentType = getCookie('pagination_type');
-    const radioInputs = document.querySelectorAll(`input[name="pagination_type"]`);
+    const radioInputs = document.querySelectorAll('input[name="pagination_type"]');
 
-    if (radioInputs.length) {
-        radioInputs.forEach(radio => {
-            if (radio.value === currentType) {
-                radio.checked = true;
-            }
+    radioInputs.forEach(radio => {
+        if (radio.value === currentType) {
+            radio.checked = true;
+        }
 
-            // Handle changes
-            radio.addEventListener('change', (e) => {
-                setCookie('pagination_type', e.target.value);
-                window.location.reload();
-            });
+        radio.addEventListener('change', (e) => {
+            // Блокируем кнопки для визуального отклика
+            radioInputs.forEach(r => r.disabled = true);
+            
+            setCookie('pagination_type', e.target.value);
+            window.location.reload();
         });
-    }
-});
+    });
 
+    // --- 2. Логика навигации по стрелкам клавиатуры ---
+
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'ArrowLeft') {
+            const prevLink = document.querySelector('.blog-next-page .prev-post');
+            if (prevLink) {
+                window.location.href = prevLink.getAttribute('data-post-url') || prevLink.href;
+            }
+        }
+        
+        if (event.key === 'ArrowRight') {
+            const nextLink = document.querySelector('.blog-next-page .next-post');
+            if (nextLink) {
+                window.location.href = nextLink.getAttribute('data-post-url') || nextLink.href;
+            }
+        }
+    });
+});
 </script>
 
 <?php echo do_shortcode('[voting_buttons]'); ?>	
