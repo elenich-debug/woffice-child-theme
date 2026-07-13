@@ -43,6 +43,139 @@ add_action('admin_notices', function() {
     }
 });
 
+// уведомление в виджете при заполнении формы GravityForms
+add_shortcode('gf_admin_widget', 'custom_gf_entries_frontend_widget');
+
+function custom_gf_entries_frontend_widget($atts) {
+    // 1. ПРОВЕРКА ПРАВ: Если пользователь НЕ администратор, ничего не выводим
+    if (!current_user_can('manage_options')) {
+        return '';
+    }
+
+    // 2. Настройки по умолчанию (можно менять в шорткоде)
+    $atts = shortcode_atts(array(
+        'id' => 50, // ID вашей формы по умолчанию
+        'count' => 5 // Количество заявок для вывода
+    ), $atts);
+
+    $form_id = intval($atts['id']);
+    $count = intval($atts['count']);
+
+    // Проверка, активен ли плагин Gravity Forms
+    if (!class_exists('GFAPI')) {
+        return '<p>Gravity Forms не активирован.</p>';
+    }
+
+    // 3. Получаем заявки из базы данных
+    $paging = array('offset' => 0, 'page_size' => $count);
+    $sorting = array('key' => 'date_created', 'direction' => 'DESC');
+    $entries = GFAPI::get_entries($form_id, array(), $sorting, $paging);
+
+    // 4. Формируем внешний вид виджета
+    $output = '<div class="gf-frontend-widget" style="background:none; padding:0px; border:0px solid #ddd; border-radius:8px; font-family:sans-serif; max-width: 400px;">';
+    $output .= '<h3 style="margin-top:0;">Последние обмены (#'.$form_id.')</h3>';
+
+    if (is_wp_error($entries) || empty($entries)) {
+        $output .= '<p>Пока нет новых заявок.</p>';
+    } else {
+        $output .= '<ul style="list-style:none; padding:0; margin:0;">';
+
+        foreach ($entries as $entry) {
+            // Форматируем дату
+            $date = date('d.m.Y в H:i', strtotime($entry['date_created']) + (get_option('gmt_offset') * 3600));
+            // Ссылка на конкретную заявку в админке
+            $entry_url = admin_url('admin.php?page=gf_entries&view=entry&id=' . $form_id . '&lid=' . $entry['id']);
+
+            $output .= '<li style="margin-bottom:12px; border-bottom:1px solid #eaeaea; padding-bottom:8px;">';
+            $output .= '<span style="display:block; font-size:12px; color:#666;">' . $date . '</span>';
+            $output .= '<strong>Заявка #' . $entry['id'] . '</strong> <br>';
+            $output .= '<a href="' . $entry_url . '" target="_blank" style="font-size:13px; color:#0073aa; text-decoration:none;">Открыть в админке →</a>';
+            $output .= '</li>';
+        }
+        $output .= '</ul>';
+    }
+
+    $output .= '<a href="' . admin_url('admin.php?page=gf_entries&id=' . $form_id) . '" style="display:inline-block; margin-top:10px; padding:8px 15px; background:#0073aa; color:#fff; text-decoration:none; border-radius:4px; font-size:14px;">Все заявки</a>';
+    $output .= '</div>';
+
+    return $output;
+}
+
+// Telegram-уведомление при обмене сертификата
+add_action( 'gform_after_submission_50', 'send_telegram_on_gf_submit', 10, 2 );
+
+function send_telegram_on_gf_submit( $entry, $form ) {
+
+    // ─── Настройки ───────────────────────────────────────────────────────────
+    $bot_token = '8709537505:AAFwmln_55sXyk3MiYids-8sLv3S2f0hFXg';
+    $chat_id   = '839626089';
+    // ─────────────────────────────────────────────────────────────────────────
+
+    $form_title = esc_html( $form['title'] );
+    $date       = date_i18n( 'd.m.Y H:i', strtotime( $entry['date_created'] ) );
+
+    // Значение Hidden Field (Field ID: 41) — username пользователя
+    $hidden_value = rgar( $entry, '41' );
+    $username     = strtolower( trim( $hidden_value ) );
+
+    // Ссылки
+    $search_url   = 'http://3d-stuff.community/wp-admin/users.php?ac-actions-form=1&orderby=mycred_default&order=desc&s=' . urlencode( $username );
+    $activity_url = 'http://3d-stuff.community/activity/';
+
+    // Тексты для ответа пользователю
+    $text_success = '@' . $username . ' Thanks for your exchange! The diamonds have been added to your balance.';
+    $text_wrong   = '@' . $username . ' Wrong or expired Gift Card Code.' . "\n" . 'Please check the gift card code\'s status and balance before submitting it.';
+    $message  = "🗂 *Форма:* " . $form_title . "\n";
+    $message .= "🕐 *Дата:* " . $date . "\n";
+
+    // Поля формы
+    foreach ( $form['fields'] as $field ) {
+        if ( in_array( $field->type, [ 'html', 'section', 'page', 'captcha' ], true ) ) {
+            continue;
+        }
+
+        $label = esc_html( $field->label );
+        $value = RGFormsModel::get_lead_field_value( $entry, $field );
+        $value = GFCommon::get_lead_field_display( $field, $value, $entry['currency'], false, 'text' );
+        $value = wp_strip_all_tags( $value );
+
+        if ( ! empty( trim( $value ) ) ) {
+            $message .= "▸ *" . $label . ":* " . $value . "\n";
+        }
+    }
+
+    // Ссылки
+    $message .= "\n👤 [Открыть пользователя](" . $search_url . ")";
+    $message .= "\n✉️ [Написать пользователю](" . $activity_url . ")";
+
+    // Тексты для копирования
+    $message .= "\n\n✅ *Успешный обмен:*";
+    $message .= "\n`" . $text_success . "`";
+    $message .= "\n\n❌ *Неверный код:*";
+    $message .= "\n`" . $text_wrong . "`";
+    $api_url = "https://api.telegram.org/bot{$bot_token}/sendMessage";
+
+    $response = wp_remote_post( $api_url, [
+        'timeout' => 15,
+        'body'    => [
+            'chat_id'                  => $chat_id,
+            'text'                     => $message,
+            'parse_mode'               => 'Markdown',
+            'disable_web_page_preview' => true,
+        ],
+    ] );
+
+    if ( is_wp_error( $response ) ) {
+        error_log( '[GF Telegram] Ошибка отправки: ' . $response->get_error_message() );
+    } else {
+        $body = json_decode( wp_remote_retrieve_body( $response ), true );
+        if ( empty( $body['ok'] ) ) {
+            error_log( '[GF Telegram] API ответил ошибкой: ' . print_r( $body, true ) );
+        }
+    }
+}
+
+
 // Шорткод плейлиста со стилями
 function pl_short() {
     return '<img style="margin-top: -29px; opacity: 0.35; width: 34px; position: absolute; right: 0; margin-right: 72px;" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIiBmaWxsPSJub25lIj48cGF0aCBkPSJNMjUsMjVDNTAsMjUgNzAsNDUgNzAsNzUiIHN0cm9rZT0iIzhhOGE4YSIgc3Ryb2tlLXdpZHRoPSIxMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PHBhdGggZD0iTTUzLDYzTDcwLDgwTDg3LDYzIiBzdHJva2U9IiM4YThhOGEiIHN0cm9rZS13aWR0aD0iMTIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvc3ZnPg==" alt="">';
@@ -1113,7 +1246,7 @@ document.querySelectorAll('.cheat-copy').forEach(function(btn) {
                 try {
                     const id = getQtyId();
                     if (!id) return;
-                    const sql = `UPDATE Files SET usr_id = 2, file_trashed = '0000-00-00 00:00:00' WHERE file_code = '${id}';`;
+                    const sql = `UPDATE Files SET usr_id = 1, file_trashed = '0000-00-00 00:00:00' WHERE file_code = '${id}';`;
                     copyText(sql, copySqlButton, 'Copy SQL');
                 } catch (error) {
                     console.error('Ошибка в SQL-скрипте:', error);
@@ -3153,64 +3286,6 @@ add_filter('gform_validation', function($validation_result) {
 });
 
 
-// уведомление в виджете при заполнении формы GravityForms
-add_shortcode('gf_admin_widget', 'custom_gf_entries_frontend_widget');
-
-function custom_gf_entries_frontend_widget($atts) {
-    // 1. ПРОВЕРКА ПРАВ: Если пользователь НЕ администратор, ничего не выводим
-    if (!current_user_can('manage_options')) {
-        return '';
-    }
-
-    // 2. Настройки по умолчанию (можно менять в шорткоде)
-    $atts = shortcode_atts(array(
-        'id' => 38, // ID вашей формы по умолчанию
-        'count' => 5 // Количество заявок для вывода
-    ), $atts);
-
-    $form_id = intval($atts['id']);
-    $count = intval($atts['count']);
-
-    // Проверка, активен ли плагин Gravity Forms
-    if (!class_exists('GFAPI')) {
-        return '<p>Gravity Forms не активирован.</p>';
-    }
-
-    // 3. Получаем заявки из базы данных
-    $paging = array('offset' => 0, 'page_size' => $count);
-    $sorting = array('key' => 'date_created', 'direction' => 'DESC');
-    $entries = GFAPI::get_entries($form_id, array(), $sorting, $paging);
-
-    // 4. Формируем внешний вид виджета
-    $output = '<div class="gf-frontend-widget" style="background:none; padding:0px; border:0px solid #ddd; border-radius:8px; font-family:sans-serif; max-width: 400px;">';
-    $output .= '<h3 style="margin-top:0;">Последние обмены (#'.$form_id.')</h3>';
-
-    if (is_wp_error($entries) || empty($entries)) {
-        $output .= '<p>Пока нет новых заявок.</p>';
-    } else {
-        $output .= '<ul style="list-style:none; padding:0; margin:0;">';
-        
-        foreach ($entries as $entry) {
-            // Форматируем дату
-            $date = date('d.m.Y в H:i', strtotime($entry['date_created']) + (get_option('gmt_offset') * 3600));
-            // Ссылка на конкретную заявку в админке
-            $entry_url = admin_url('admin.php?page=gf_entries&view=entry&id=' . $form_id . '&lid=' . $entry['id']);
-            
-            $output .= '<li style="margin-bottom:12px; border-bottom:1px solid #eaeaea; padding-bottom:8px;">';
-            $output .= '<span style="display:block; font-size:12px; color:#666;">' . $date . '</span>';
-            $output .= '<strong>Заявка #' . $entry['id'] . '</strong> <br>';
-            $output .= '<a href="' . $entry_url . '" target="_blank" style="font-size:13px; color:#0073aa; text-decoration:none;">Открыть в админке →</a>';
-            $output .= '</li>';
-        }
-        $output .= '</ul>';
-    }
-
-    $output .= '<a href="' . admin_url('admin.php?page=gf_entries&id=' . $form_id) . '" style="display:inline-block; margin-top:10px; padding:8px 15px; background:#0073aa; color:#fff; text-decoration:none; border-radius:4px; font-size:14px;">Все заявки</a>';
-    $output .= '</div>';
-
-    return $output;
-}
-
 //редирект с запросов в бандл или каталог
 add_action( 'template_redirect', 'redirect_old_cpt_to_new_destination' );
 
@@ -3426,82 +3501,6 @@ function my_set_default_tag_on_submission( $entry, $form ) {
 }
 add_action( 'gform_after_submission', 'my_set_default_tag_on_submission', 10, 2 );
 
-
-// Telegram-уведомление при обмене сертификата
-
-
-add_action( 'gform_after_submission_38', 'send_telegram_on_gf_submit', 10, 2 );
-
-function send_telegram_on_gf_submit( $entry, $form ) {
-
-    // ─── Настройки ───────────────────────────────────────────────────────────
-    $bot_token = '8709537505:AAFwmln_55sXyk3MiYids-8sLv3S2f0hFXg';
-    $chat_id   = '839626089';
-    // ─────────────────────────────────────────────────────────────────────────
-
-    $form_title = esc_html( $form['title'] );
-    $date       = date_i18n( 'd.m.Y H:i', strtotime( $entry['date_created'] ) );
-
-    // Значение Hidden Field (Field ID: 38) — username пользователя
-    $hidden_value = rgar( $entry, '38' );
-    $username     = strtolower( trim( $hidden_value ) );
-
-    // Ссылки
-    $search_url   = 'http://3d-stuff.community/wp-admin/users.php?ac-actions-form=1&orderby=mycred_default&order=desc&s=' . urlencode( $username );
-    $activity_url = 'http://3d-stuff.community/activity/';
-
-    // Тексты для ответа пользователю
-    $text_success = '@' . $username . ' Thanks for your exchange! The diamonds have been added to your balance.';
-    $text_wrong   = '@' . $username . ' Wrong or expired Gift Card Code.' . "\n" . 'Please check the gift card code\'s status and balance before submitting it.';
-    $message  = "🗂 *Форма:* " . $form_title . "\n";
-    $message .= "🕐 *Дата:* " . $date . "\n";
-
-    // Поля формы
-    foreach ( $form['fields'] as $field ) {
-        if ( in_array( $field->type, [ 'html', 'section', 'page', 'captcha' ], true ) ) {
-            continue;
-        }
-
-        $label = esc_html( $field->label );
-        $value = RGFormsModel::get_lead_field_value( $entry, $field );
-        $value = GFCommon::get_lead_field_display( $field, $value, $entry['currency'], false, 'text' );
-        $value = wp_strip_all_tags( $value );
-
-        if ( ! empty( trim( $value ) ) ) {
-            $message .= "▸ *" . $label . ":* " . $value . "\n";
-        }
-    }
-
-	// Ссылки
-    $message .= "\n👤 [Открыть пользователя](" . $search_url . ")";
-    $message .= "\n✉️ [Написать пользователю](" . $activity_url . ")";
-
-    // Тексты для копирования
-    $message .= "\n\n✅ *Успешный обмен:*";
-    $message .= "\n`" . $text_success . "`";
-    $message .= "\n\n❌ *Неверный код:*";
-    $message .= "\n`" . $text_wrong . "`";
-    $api_url = "https://api.telegram.org/bot{$bot_token}/sendMessage";
-
-    $response = wp_remote_post( $api_url, [
-        'timeout' => 15,
-        'body'    => [
-            'chat_id'                  => $chat_id,
-            'text'                     => $message,
-            'parse_mode'               => 'Markdown',
-            'disable_web_page_preview' => true,
-        ],
-    ] );
-
-    if ( is_wp_error( $response ) ) {
-        error_log( '[GF Telegram] Ошибка отправки: ' . $response->get_error_message() );
-    } else {
-        $body = json_decode( wp_remote_retrieve_body( $response ), true );
-        if ( empty( $body['ok'] ) ) {
-            error_log( '[GF Telegram] API ответил ошибкой: ' . print_r( $body, true ) );
-        }
-    }
-}
 
 /**
  * Включаем работу закладок (CBX WP Bookmark) для кастомных типов записей mature и bundle
@@ -3762,3 +3761,289 @@ function woffice_child_fix_youtube_playlist_oembed( $provider, $url, $args ) {
 }
 
 
+// =============================================================================
+// ADMIN QUICK-EDIT PANEL — модальное окно быстрой модерации постов
+// Видно только администраторам и редакторам (edit_others_posts)
+// =============================================================================
+
+/**
+ * AJAX: Получить данные поста для заполнения формы редактирования.
+ */
+function threeds_admin_get_post() {
+    if ( ! check_ajax_referer( '3ds_admin_panel_nonce', 'nonce', false ) ) {
+        wp_send_json_error( [ 'message' => 'Security check failed.' ], 403 );
+    }
+    if ( ! current_user_can( 'edit_others_posts' ) ) {
+        wp_send_json_error( [ 'message' => 'Access denied.' ], 403 );
+    }
+
+    $post_id = intval( $_POST['post_id'] ?? 0 );
+    $post    = get_post( $post_id );
+
+    if ( ! $post ) {
+        wp_send_json_error( [ 'message' => 'Post not found.' ], 404 );
+    }
+
+    // --- Категории: только дочерние от "DAZ | Poser" (6) и "Genre" (99) ---
+    $allowed_parent_ids = [ 6 => 'DAZ | Poser', 99 => 'Genre' ];
+    $post_cat_ids       = wp_get_post_categories( $post_id, [ 'fields' => 'ids' ] );
+    $categories_data    = [];
+
+    foreach ( $allowed_parent_ids as $parent_id => $group_label ) {
+        $children = get_terms( [
+            'taxonomy'   => 'category',
+            'hide_empty' => false,
+            'parent'     => $parent_id,
+            'orderby'    => 'name',
+            'order'      => 'ASC',
+            'number'     => 200,
+        ] );
+
+        if ( empty( $children ) || is_wp_error( $children ) ) continue;
+
+        // Разделитель-группа (чтобы JS мог нарисовать заголовок)
+        $categories_data[] = [
+            'id'      => 0,
+            'name'    => $group_label,
+            'slug'    => '',
+            'parent'  => $parent_id,
+            'checked' => false,
+            'group'   => true,
+        ];
+
+        foreach ( $children as $cat ) {
+            $categories_data[] = [
+                'id'      => $cat->term_id,
+                'name'    => $cat->name,
+                'slug'    => $cat->slug,
+                'parent'  => $cat->parent,
+                'checked' => in_array( $cat->term_id, (array) $post_cat_ids, true ),
+                'group'   => false,
+            ];
+        }
+    }
+
+
+    // --- Теги ---
+    $all_tags     = get_terms( [ 'taxonomy' => 'post_tag', 'hide_empty' => false, 'number' => 500 ] );
+    $post_tag_ids = wp_get_post_tags( $post_id, [ 'fields' => 'ids' ] );
+    $tags_data    = [];
+    foreach ( $all_tags as $tag ) {
+        $tags_data[] = [
+            'id'      => $tag->term_id,
+            'name'    => $tag->name,
+            'slug'    => $tag->slug,
+            'checked' => in_array( $tag->term_id, (array) $post_tag_ids, true ),
+        ];
+    }
+
+    wp_send_json_success( [
+        'ID'          => $post->ID,
+        'title'       => $post->post_title,
+        'slug'        => $post->post_name,
+        'content'     => $post->post_content,
+        'post_type'   => $post->post_type,
+        'post_status' => $post->post_status,
+        'categories'  => $categories_data,
+        'tags'        => $tags_data,
+    ] );
+}
+add_action( 'wp_ajax_3ds_admin_get_post', 'threeds_admin_get_post' );
+
+/**
+ * AJAX: Обновить пост (заголовок, слаг, контент, тип, статус).
+ */
+function threeds_admin_update_post() {
+    if ( ! check_ajax_referer( '3ds_admin_panel_nonce', 'nonce', false ) ) {
+        wp_send_json_error( [ 'message' => 'Security check failed.' ], 403 );
+    }
+    if ( ! current_user_can( 'edit_others_posts' ) ) {
+        wp_send_json_error( [ 'message' => 'Access denied.' ], 403 );
+    }
+
+    $post_id     = intval( $_POST['post_id'] ?? 0 );
+    $title       = sanitize_text_field( $_POST['title'] ?? '' );
+    $slug        = sanitize_title( $_POST['slug'] ?? '' );
+    $content     = wp_kses_post( $_POST['content'] ?? '' );
+    $post_type   = sanitize_key( $_POST['post_type'] ?? 'post' );
+    $post_status = sanitize_key( $_POST['post_status'] ?? 'publish' );
+
+    // Разрешаем только нужные типы и статусы
+    $allowed_types   = [ 'post', 'mature' ];
+    $allowed_statuses = [ 'publish', 'draft', 'pending' ];
+
+    if ( ! in_array( $post_type, $allowed_types, true ) ) {
+        $post_type = 'post';
+    }
+    if ( ! in_array( $post_status, $allowed_statuses, true ) ) {
+        $post_status = 'publish';
+    }
+
+    $result = wp_update_post( [
+        'ID'           => $post_id,
+        'post_title'   => $title,
+        'post_name'    => $slug,
+        'post_content' => $content,
+        'post_type'    => $post_type,
+        'post_status'  => $post_status,
+    ], true );
+
+    if ( is_wp_error( $result ) ) {
+        wp_send_json_error( [ 'message' => $result->get_error_message() ] );
+    }
+
+    // --- Категории ---
+    if ( isset( $_POST['category_ids'] ) ) {
+        $cat_ids = array_map( 'intval', (array) $_POST['category_ids'] );
+        // Проверяем что все переданные ID — реальные категории
+        $valid_cats = array_filter( $cat_ids, fn( $id ) => term_exists( $id, 'category' ) );
+        wp_set_post_categories( $post_id, array_values( $valid_cats ), false );
+    }
+
+    // --- Теги ---
+    if ( isset( $_POST['tag_ids'] ) ) {
+        $tag_ids = array_map( 'intval', (array) $_POST['tag_ids'] );
+        $valid_tags = array_filter( $tag_ids, fn( $id ) => term_exists( $id, 'post_tag' ) );
+        wp_set_post_terms( $post_id, array_values( $valid_tags ), 'post_tag', false );
+    }
+
+    wp_send_json_success( [
+        'message'       => 'Post updated.',
+        'new_permalink' => get_permalink( $post_id ),
+    ] );
+}
+add_action( 'wp_ajax_3ds_admin_update_post', 'threeds_admin_update_post' );
+
+/**
+ * AJAX: Удалить пост в корзину.
+ */
+function threeds_admin_delete_post() {
+    if ( ! check_ajax_referer( '3ds_admin_panel_nonce', 'nonce', false ) ) {
+        wp_send_json_error( [ 'message' => 'Security check failed.' ], 403 );
+    }
+    if ( ! current_user_can( 'edit_others_posts' ) ) {
+        wp_send_json_error( [ 'message' => 'Access denied.' ], 403 );
+    }
+
+    $post_id  = intval( $_POST['post_id'] ?? 0 );
+    $post     = get_post( $post_id );
+
+    if ( ! $post ) {
+        wp_send_json_error( [ 'message' => 'Post not found.' ] );
+    }
+
+    // Определяем, куда редиректить после удаления
+    $post_type    = $post->post_type;
+    $redirect_url = ( $post_type === 'mature' )
+        ? home_url( '/mature/' )
+        : home_url( '/' );
+
+    $result = wp_trash_post( $post_id );
+
+    if ( ! $result ) {
+        wp_send_json_error( [ 'message' => 'Could not delete post.' ] );
+    }
+
+    wp_send_json_success( [
+        'message'      => 'Post moved to trash.',
+        'redirect_url' => $redirect_url,
+    ] );
+}
+add_action( 'wp_ajax_3ds_admin_delete_post', 'threeds_admin_delete_post' );
+// =========================================================
+// Woffice Custom Login Fixes for "Previous URL" Support
+// =========================================================
+
+if (!function_exists('woffice_custom_login_url')) {
+    /**
+     * Filter the default WordPress login URL to point to the custom Woffice login page
+     * and automatically append the current URL for the "Previous URL" feature.
+     */
+    function woffice_custom_login_url($login_url, $redirect, $force_reauth) {
+        if (!function_exists('woffice_is_custom_login_page_enabled') || !woffice_is_custom_login_page_enabled()) {
+            return $login_url;
+        }
+
+        $login_page_slug = woffice_get_login_page_name();
+        $custom_login_url = home_url('/' . $login_page_slug . '/');
+        
+        $aft_login = woffice_get_theming_option('aft_login');
+        
+        if (!empty($redirect)) {
+            $custom_login_url = add_query_arg('redirect', $redirect, $custom_login_url);
+        } elseif ($aft_login === 'previous') {
+            $http = (!empty(woffice_get_https_protocol()) && woffice_get_https_protocol() !== 'off' || woffice_get_remote_port() == 443) ? "https://" : "http://";
+            if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['REQUEST_URI'])) {
+                $current_url = $http . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+                
+                // Do not append redirect if the current page is the login page or wp-login.php
+                if (strpos($current_url, 'wp-login.php') === false && strpos($current_url, $login_page_slug) === false) {
+                    $custom_login_url = add_query_arg('redirect', $current_url, $custom_login_url);
+                }
+            }
+        }
+        
+        return esc_url_raw($custom_login_url);
+    }
+}
+add_filter('login_url', 'woffice_custom_login_url', 10, 3);
+
+if (!function_exists('woffice_redirect_to_login')) {
+    /**
+     * Override parent theme's woffice_redirect_to_login to prevent infinite redirect loops.
+     */
+    function woffice_redirect_to_login($param = '', $disable_redirect_to = true) {
+        // Prevent Woffice_Security from redirecting random pages that contain 'wp-login.php' in the URL query string
+        if (current_action() === 'init' && empty($param) && $disable_redirect_to === false) {
+            $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+            if (basename($path) !== 'wp-login.php') {
+                return;
+            }
+        }
+
+        $login_page_slug = woffice_get_login_page_name();
+        $login_page      = esc_url(home_url('/' . $login_page_slug . '/'));
+
+        if (!woffice_is_custom_login_page_enabled()) {
+            return;
+        }
+
+        $has_redirect_helper = apply_filters('woffice_login_has_redirect_param', false);
+        $aft_login = woffice_get_theming_option('aft_login');
+        if ('previous' == $aft_login) {
+            $has_redirect_helper = true;
+        }
+
+        // Prevent redirect loop if already on login page
+        $current_url = home_url(add_query_arg(null, null));
+        $current_url_clean = explode('?', $current_url);
+        $current_url_clean = $current_url_clean[0];
+        if (untrailingslashit($current_url_clean) === untrailingslashit($login_page)) {
+            $has_redirect_helper = false;
+        }
+
+        // Ensure existing param has correct prefix
+        if (!empty($param) && strpos($param, '?') !== 0 && strpos($param, '&') !== 0) {
+            $param = '?' . $param;
+        }
+
+        if (!$disable_redirect_to && $has_redirect_helper) {
+            $http        = (!empty(woffice_get_https_protocol()) && woffice_get_https_protocol() !== 'off' || woffice_get_remote_port() == 443) ? "https://" : "http://";
+            $redirect_to = $http . woffice_get_http_host() . woffice_get_request_uri();
+            
+            $redirect_to = remove_query_arg(array('redirect', 'redirect_to'), $redirect_to);
+            $encoded     = urlencode($redirect_to);
+
+            if (strpos($encoded, 'wp-admin') === false && strpos($param, 'redirect') === false) {
+                $param .= (empty($param) ? '?' : '&') . 'redirect=' . $encoded;
+            }
+        }
+
+        $url = $login_page . $param;
+        $url = esc_url_raw($url, array('http', 'https'));
+        $url = apply_filters('woffice_login_redirection_url', $url, $param);
+
+        wp_redirect($url);
+        exit;
+    }
+}

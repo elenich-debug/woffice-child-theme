@@ -2,7 +2,11 @@
 
 // If the user is already logged we redirect him back to the login page
 if (is_user_logged_in()) {
-    wp_redirect(home_url());
+    if (!empty($_GET['redirect'])) {
+        wp_safe_redirect($_GET['redirect']);
+    } else {
+        wp_safe_redirect(home_url());
+    }
     exit;
 }
 
