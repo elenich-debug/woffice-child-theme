@@ -2092,8 +2092,10 @@ function woffice_custom_login_scripts() {
 
         // --- Подключение скриптов (не изменилось) ---
         wp_enqueue_script('three-js', 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js', array(), null, true);
+        wp_script_add_data('three-js', 'strategy', 'defer');
         $vanta_script_url = get_stylesheet_directory_uri() . '/js/vanta.globe.min.js';
         wp_enqueue_script('vanta-globe-js', $vanta_script_url, array('three-js'), '1.0', true);
+        wp_script_add_data('vanta-globe-js', 'strategy', 'defer');
 
         // --- ОБНОВЛЕННЫЙ JAVASCRIPT: СИНХРОНИЗАЦИЯ ПОЯВЛЕНИЯ ---
         $inline_script = "
