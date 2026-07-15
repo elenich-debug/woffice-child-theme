@@ -3,6 +3,17 @@
  * The template used for displaying post content
  */
 
+// ОПТИМИЗАЦИЯ TTFB: Фрагментное кэширование для неавторизованных пользователей
+if (!is_user_logged_in()) {
+    $cache_key = 'woffice_card_' . get_the_ID() . '_' . get_post_modified_time('U', true);
+    $cached_html = get_transient($cache_key);
+    if ($cached_html !== false) {
+        echo $cached_html;
+        return;
+    }
+    ob_start();
+}
+
 // CUSTOM CLASSES ADDED BY THE THEME
 $post_classes = array('content', 'entry-content');
 $blog_listing_content = woffice_get_theming_option('blog_listing_content','excerpt');
@@ -28,14 +39,19 @@ if(get_post_status() == 'draft')
             global $wpdb;
             $current_user_id = get_current_user_id();
             $current_post_id = get_the_ID();
-            $mycred_log_table = $wpdb->prefix . 'myCRED_log';
+            
+            // Оптимизация TTFB: Запрашиваем все покупки пользователя 1 раз за загрузку страницы, а не в цикле!
+            static $purchased_posts = null;
+            if ( $purchased_posts === null ) {
+                $mycred_log_table = $wpdb->prefix . 'myCRED_log';
+                $purchased_posts = $wpdb->get_col( $wpdb->prepare(
+                    "SELECT ref_id FROM {$mycred_log_table} WHERE user_id = %d AND ref = %s AND ctype = %s",
+                    $current_user_id, 'buy_content', 'mycred_default'
+                ) );
+                if ( !is_array($purchased_posts) ) $purchased_posts = array();
+            }
 
-            $is_purchased = $wpdb->get_var( $wpdb->prepare(
-                "SELECT COUNT(*) FROM {$mycred_log_table} WHERE user_id = %d AND ref = %s AND ctype = %s AND ref_id = %d",
-                $current_user_id, 'buy_content', 'mycred_default', $current_post_id
-            ) );
-
-            if ( $is_purchased > 0 ) {
+            if ( in_array($current_post_id, $purchased_posts) ) {
                 $post_interacted = true;
             }
 
@@ -62,7 +78,11 @@ if(get_post_status() == 'draft')
                     <?php 
                     /*GETTING THE POST THUMBNAIL URL*/
                     $featured_height = (function_exists('woffice_get_post_rdx_option')) ? woffice_get_post_rdx_option(get_the_ID(), 'featured_height') : '';
-                    Woffice_Frontend::render_featured_image_single_post(get_the_ID(), $featured_height); // Исправлено: используем get_the_ID() вместо $post->ID 			
+                    
+                    ob_start();
+                    Woffice_Frontend::render_featured_image_single_post(get_the_ID(), $featured_height); 			
+                    $thumb_html = ob_get_clean();
+                    echo function_exists('iar_process_images_in_html') ? iar_process_images_in_html($thumb_html) : $thumb_html;
                     ?>
                 <?php else: ?>
                     <img src="<?php echo get_stylesheet_directory_uri() ?>/images/blog.png" alt="Default blog image"> <!-- Добавлен alt -->
@@ -122,3 +142,11 @@ if(get_post_status() == 'draft')
         </div>
     </article> <!-- Закрывающий тег article -->
 </div>
+<?php
+// Сохраняем закэшированный HTML
+if (!is_user_logged_in()) {
+    $html = ob_get_clean();
+    set_transient($cache_key, $html, HOUR_IN_SECONDS * 12);
+    echo $html;
+}
+?>

@@ -65,8 +65,6 @@ $wiki_sortbylike = ($sortbylike_option && isset($_GET['sortby']) && $_GET['sortb
 							<?php
 							//DISABLED IN THIS THEME
 							wp_link_pages(array('echo'  => 0));
-							//EDIT LINK
-							edit_post_link( __( 'Edit', 'woffice' ), '<span class="edit-link">', '</span>' );
 
 							woffice_wiki_sort_by_like();
 

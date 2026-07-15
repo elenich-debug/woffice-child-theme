@@ -38,8 +38,6 @@ get_header();
 							the_content();
 							//DISABLED IN THIS THEME
 							wp_link_pages(array('echo'  => 0));
-							//EDIT LINK
-							edit_post_link( __( 'Edit', 'woffice' ), '<span class="edit-link">', '</span>' );
 							?>
 						</article>
 					<?php 

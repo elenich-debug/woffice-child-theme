@@ -5,23 +5,6 @@
 
 global $post;
 
-$current_user_is_admin  = woffice_current_is_admin();
-$edit_allowed           = (Woffice_Frontend::edit_allowed($post->post_type) == true) ? true : false;
-$delete_allowed         = (Woffice_Frontend::edit_allowed($post->post_type, 'delete') == true) ? true : false;
-// Дополнительная проверка: разрешаем редактирование/удаление для постов
-// со статусом Pending Review, если пользователь — автор или администратор.
-// Родительская тема учитывает только 'publish' и 'draft', игнорируя 'pending'.
-$process_result = array();
-if ( ! $edit_allowed && $post->post_status === 'pending' && is_user_logged_in() ) {
-	$current_user = wp_get_current_user();
-	if ( $post->post_author == $current_user->ID || woffice_current_is_admin() ) {
-		$edit_allowed   = true;
-		$delete_allowed = true;
-	}
-}
-if ($edit_allowed) {
-	$process_result = Woffice_Frontend::frontend_process($post->post_type, $post->ID);
-}
 
 get_header();  ?>
 
@@ -86,11 +69,7 @@ $bg_image_url = 'http://3d-stuff.community/wp-content/uploads/2025/06/header-bg.
 							get_template_part( 'content', 'private' );
 						} ?>
 					</div>
-					<div class="celts-frontend-form-wrapper">
-					<?php if($edit_allowed) : ?>
-						<?php Woffice_Frontend_Celestial::frontend_render($post->post_type, $process_result, get_the_ID()); ?>
-					<?php endif; ?>
-					</div>
+
 				</div>
 					
 			</div><!-- END #content-container -->

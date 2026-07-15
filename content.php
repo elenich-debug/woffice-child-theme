@@ -4,6 +4,7 @@
  */
 ?>
 <?php 
+if (function_exists('ttfb_log_time')) ttfb_log_time("CARD_" . get_the_ID() . "_START");
 // CUSTOM CLASSES ADDED BY THE THEME
 $post_classes = array('content', 'entry-content');
 $blog_listing_content = woffice_get_theming_option('blog_listing_content','excerpt');
@@ -23,12 +24,17 @@ if(get_post_status() == 'draft')
 						<!-- THUMBNAIL IMAGE -->
 						<?php /*GETTING THE POST THUMBNAIL URL*/
 							$featured_height = (function_exists('woffice_get_post_rdx_option')) ? woffice_get_post_rdx_option(get_the_ID(), 'featured_height') : '';
+							ob_start();
 							Woffice_Frontend::render_featured_image_single_post($post->ID, $featured_height);
+							$thumb_html = ob_get_clean();
+							echo function_exists('iar_process_images_in_html') ? iar_process_images_in_html($thumb_html) : $thumb_html;
 						?>
 						<?php else: ?>
 						<img src="<?php echo get_stylesheet_directory_uri() ?>/images/blog.png">
 				
-					<?php endif; ?>
+					<?php endif; 
+					if (function_exists('ttfb_log_time')) ttfb_log_time("CARD_" . get_the_ID() . "_THUMB");
+					?>
 				</div>
 				<div class="card-body">
 					<div class="blog-title">
@@ -60,6 +66,9 @@ if(get_post_status() == 'draft')
 								
 						<?php endif; ?>
 					</div>
+					<?php 
+					if (function_exists('ttfb_log_time')) ttfb_log_time("CARD_" . get_the_ID() . "_META");
+					?>
 					<div class="blog-content">
 						<?php if (is_single() || $blog_listing_content == 'content'): ?>
 							<?php the_content(''); ?>
@@ -86,3 +95,6 @@ if(get_post_status() == 'draft')
 	}
 	?>
 </article>
+<?php
+if (function_exists('ttfb_log_time')) ttfb_log_time("CARD_" . get_the_ID() . "_END");
+?>

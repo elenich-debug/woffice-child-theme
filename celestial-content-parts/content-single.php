@@ -11,21 +11,6 @@ $hide_image_single_post = woffice_convert_to_bool_option(woffice_get_theming_opt
 $hide_author_box = woffice_get_theming_option('hide_author_box_single_post', false);
 $hide_like_counter = woffice_get_theming_option('hide_like_counter_inside_author_box', false);
 $hide_learndash_meta = woffice_get_theming_option('hide_learndash_meta', false);
-$edit_allowed           = (Woffice_Frontend::edit_allowed($post->post_type) == true) ? true : false;
-$delete_allowed         = (Woffice_Frontend::edit_allowed($post->post_type, 'delete') == true) ? true : false;
-// Дополнительная проверка: разрешаем редактирование/удаление для постов
-// со статусом Pending Review, если пользователь — автор или администратор.
-// Родительская тема учитывает только 'publish' и 'draft', игнорируя 'pending'.
-if ( ! $edit_allowed && get_post_status() === 'pending' && is_user_logged_in() ) {
-	$current_user = wp_get_current_user();
-	if ( $post->post_author == $current_user->ID || woffice_current_is_admin() ) {
-		$edit_allowed   = true;
-		$delete_allowed = true;
-	}
-}
-if ($edit_allowed) {
-	$process_result = Woffice_Frontend::frontend_process($post->post_type, $post->ID);
-}
 
 if(get_post_status() == 'draft')
     array_push($post_classes, 'is-draft');
@@ -52,33 +37,32 @@ if(get_post_status() == 'draft')
 											?>
 										</ul>
 
-										
-
 										<?php
-										/*
-										* FRONT END EDIT
-										*/
-										if ($edit_allowed || $delete_allowed) { ?>
+										// ADMIN QUICK-EDIT BUTTONS — только для администраторов и редакторов
+										if ( current_user_can('edit_others_posts') ) : ?>
 											<div class="blog-meta-right">
 												<div class="blog-action-btn">
-													<?php
-													/**
-													 * Delete Button
-													 * From version 1.8.6 if an user is allowed to edit then is allowed also to delete
-													 * if (is_user_logged_in() && (current_user_can('edit_others_posts') || $current_user->ID == $post->post_author) ) {
-													 */
-													if($delete_allowed) {
-														echo '<a onclick="return confirm(\'' . __('Are you sure you wish to delete article :', 'woffice') . ' ' . get_the_title() . ' ?\')" href="' . get_delete_post_link(get_the_ID(), '') . '" class="celst-delete-btn">
-															 ' . __("Delete", "woffice") . '
-															</a>';
-													}
-													?>
-													<?php if($edit_allowed) : ?>
-														<a href="#" class="celst-edit-btn celst-form-edit-toggle" data-action="display"> <?php _e("Edit", "woffice"); ?></a>
-													<?php endif; ?>	
+													<button
+														type="button"
+														class="admin-edit-btn pqem-open-btn"
+														data-post-id="<?php echo get_the_ID(); ?>"
+														data-nonce="<?php echo wp_create_nonce('3ds_admin_panel_nonce'); ?>"
+														title="Edit post">
+														<i class="fa fa-pencil-alt"></i> Edit
+													</button>
+													<button
+														type="button"
+														class="admin-delete-btn pqem-delete-btn"
+														data-post-id="<?php echo get_the_ID(); ?>"
+														data-post-title="<?php echo esc_attr(get_the_title()); ?>"
+														data-nonce="<?php echo wp_create_nonce('3ds_admin_panel_nonce'); ?>"
+														title="Move to trash">
+														<i class="fa fa-trash"></i> Delete
+													</button>
 												</div>
 											</div>
-										<?php } ?>
+										<?php endif; ?>
+
 									<?php endif; ?>
 							</div>
 						</div>
@@ -215,6 +199,98 @@ if (get_post_type() === 'request') {
 	</div>
 </article>
 
+<?php if ( current_user_can('edit_others_posts') ) : ?>
+<!-- ADMIN QUICK-EDIT MODAL -->
+<div id="pqem-overlay" role="dialog" aria-modal="true" aria-labelledby="pqem-dialog-title">
+	<div class="pqem-dialog">
+		<div class="pqem-header">
+			<span class="pqem-status-msg" id="pqem-status"></span>
+			<div class="pqem-footer-left">
+				<button type="button" class="pqem-btn pqem-btn-cancel" id="pqem-cancel">Cancel</button>
+				<button type="button" class="pqem-btn pqem-btn-draft" id="pqem-save-draft">
+					<i class="fa fa-save"></i> Save Draft
+				</button>
+				<button type="button" class="pqem-btn pqem-btn-publish" id="pqem-publish">
+					<i class="fa fa-check"></i> Publish
+				</button>
+			</div>
+		</div>
+		<div class="pqem-body">
+			<input type="hidden" id="pqem-post-id" value="">
+			<input type="hidden" id="pqem-nonce" value="">
+			<input type="hidden" id="pqem-slug" value="">
+
+			<div class="pqem-field">
+				<label class="pqem-label" for="pqem-title">Title</label>
+				<input type="text" id="pqem-title" class="pqem-input" placeholder="Post title...">
+			</div>
+
+			<div class="pqem-row-2">
+				<div class="pqem-field">
+					<label class="pqem-label" for="pqem-post-type">Post Type</label>
+					<select id="pqem-post-type" class="pqem-select">
+						<option value="post">post</option>
+						<option value="mature">mature</option>
+					</select>
+				</div>
+				<div class="pqem-field">
+					<label class="pqem-label" for="pqem-post-status">Status</label>
+					<select id="pqem-post-status" class="pqem-select">
+						<option value="publish">Published</option>
+						<option value="pending">Pending Review</option>
+						<option value="draft">Draft</option>
+					</select>
+				</div>
+			</div>
+
+			<!-- Категории + Теги -->
+			<div class="pqem-tax-row">
+				<details class="pqem-tax-panel" id="pqem-cats-panel">
+					<summary class="pqem-tax-summary">
+						<span class="dashicons dashicons-category"></span>
+						Categories <span class="pqem-tax-badge" id="pqem-cats-badge">0</span>
+					</summary>
+					<div class="pqem-tax-list" id="pqem-cats-list"></div>
+				</details>
+				<details class="pqem-tax-panel" id="pqem-tags-panel">
+					<summary class="pqem-tax-summary">
+						<span class="dashicons dashicons-tag"></span>
+						Tags <span class="pqem-tax-badge" id="pqem-tags-badge">0</span>
+					</summary>
+					<div class="pqem-tax-list" id="pqem-tags-list"></div>
+				</details>
+			</div>
+
+			<div class="pqem-field">
+				<label class="pqem-label" for="pqem-content">Content <span style="font-weight:400;text-transform:none;letter-spacing:0;">(HTML)</span></label>
+				
+				<div class="pqem-toolbar">
+					<button type="button" id="pqem-warp-btn" class="pqem-editor-btn" title="Обернуть изображения"><span class="dashicons dashicons-cover-image" style="color:#F44336;"></span></button>
+					<button type="button" id="pqem-swap-btn" class="pqem-editor-btn" title="Поменять изображения местами"><span class="dashicons dashicons-image-flip-horizontal" style="color:#FF9800;"></span></button>
+					<button type="button" id="pqem-paste-second-img-btn" class="pqem-editor-btn" title="Вставить 2-е изображение из буфера"><span class="dashicons dashicons-clipboard" style="color:#2271b1;"></span></button>
+					<button type="button" id="pqem-replace-dl-link-btn" class="pqem-editor-btn" title="Заменить ссылку на скачивание из буфера"><span class="dashicons dashicons-download" style="color:#673AB7;"></span></button>
+					<button type="button" id="pqem-inject-text-btn" class="pqem-editor-btn" title="Вставить текст из буфера после изображений"><span class="dashicons dashicons-text-page" style="color:#607D8B;"></span></button>
+					<button type="button" id="pqem-clear-btn" class="pqem-editor-btn" title="Очистить алмазы (mycred_sell_this)"><span class="dashicons dashicons-star-filled" style="color:#8BC34A;"></span></button>
+				</div>
+
+				<textarea id="pqem-content" class="pqem-textarea" placeholder="Post content (HTML)..."></textarea>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div id="pqem-delete-overlay" role="dialog" aria-modal="true">
+	<div class="pqem-delete-dialog">
+		<h3 class="pqem-delete-title">Move to Trash</h3>
+		<p class="pqem-delete-desc" id="pqem-delete-desc"></p>
+		<div class="pqem-delete-actions">
+			<button type="button" class="pqem-btn pqem-btn-cancel" id="pqem-delete-cancel">Cancel</button>
+			<button type="button" class="pqem-btn pqem-btn-delete" id="pqem-delete-confirm">Move to Trash</button>
+		</div>
+	</div>
+</div>
+<?php endif; ?>
+
 <!-- Обновленный блок пагинации -->
 <div class="blog-next-page center animate-me fadeInUp" role="navigation">
     <?php
@@ -222,21 +298,20 @@ if (get_post_type() === 'request') {
     $current_author_id = get_the_author_meta('ID');
     
     if($pagination_type === 'author') {
-        // Исправленный запрос для автора
-        $args = array(
-            'post_type'      => 'post',
-            'author'         => $current_author_id,
-            'posts_per_page' => -1,
-            'orderby'        => 'date',
-            'order'          => 'ASC' // Изменено с DESC на ASC
-        );
+        global $wpdb;
+        $current_post_date = get_post_field('post_date', get_the_ID());
         
-        $author_posts = get_posts($args);
-        $current_index = array_search(get_the_ID(), array_column($author_posts, 'ID'));
-        
-        // Логика теперь идентична другим типам пагинации
-        $prev_post = ($current_index > 0) ? $author_posts[$current_index - 1] : null; // Более старый пост
-        $next_post = ($current_index < count($author_posts) - 1) ? $author_posts[$current_index + 1] : null; // Более новый пост
+        $prev_post_id = $wpdb->get_var($wpdb->prepare(
+            "SELECT ID FROM $wpdb->posts WHERE post_type = 'post' AND post_status = 'publish' AND post_author = %d AND post_date < %s ORDER BY post_date DESC LIMIT 1",
+            $current_author_id, $current_post_date
+        ));
+        $prev_post = $prev_post_id ? get_post($prev_post_id) : null;
+
+        $next_post_id = $wpdb->get_var($wpdb->prepare(
+            "SELECT ID FROM $wpdb->posts WHERE post_type = 'post' AND post_status = 'publish' AND post_author = %d AND post_date > %s ORDER BY post_date ASC LIMIT 1",
+            $current_author_id, $current_post_date
+        ));
+        $next_post = $next_post_id ? get_post($next_post_id) : null;
     } else {
         $in_same_term = ($pagination_type === 'category');
         $prev_post = get_previous_post($in_same_term);
@@ -325,5 +400,522 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+
+<?php if ( current_user_can('edit_others_posts') ) : ?>
+<script>
+(function() {
+	'use strict';
+
+	const ajaxUrl = '<?php echo esc_js(admin_url('admin-ajax.php')); ?>';
+
+	// Перемещаем модальные окна прямо в <body>, чтобы избежать проблем со stacking context 
+	// (перекрытие белой шапкой темы)
+	const overlay = document.getElementById('pqem-overlay');
+	const deleteOverlay = document.getElementById('pqem-delete-overlay');
+	if (overlay) document.body.appendChild(overlay);
+	if (deleteOverlay) document.body.appendChild(deleteOverlay);
+
+	// ---- Helpers ----
+	function setStatus(msg, type = '') {
+		const el = document.getElementById('pqem-status');
+		if (!el) return;
+		el.textContent = msg;
+		el.className = 'pqem-status-msg' + (type ? ' is-' + type : '');
+	}
+
+	function setBusy(busy) {
+		['pqem-save-draft', 'pqem-publish', 'pqem-cancel'].forEach(id => {
+			const btn = document.getElementById(id);
+			if (btn) btn.disabled = busy;
+		});
+	}
+
+	// ---- Открытие/закрытие модала ----
+	function lockScroll() {
+		if (document.body.classList.contains('pqem-scroll-locked')) return;
+		const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+		document.body.style.overflow = 'hidden';
+		if (scrollbarWidth > 0) {
+			document.body.style.paddingRight = scrollbarWidth + 'px';
+		}
+		document.body.classList.add('pqem-scroll-locked');
+	}
+
+	function unlockScroll() {
+		// Разблокируем только если оба окна закрыты
+		const mainOpen = document.querySelector('#pqem-overlay.is-open');
+		const delOpen  = document.querySelector('#pqem-delete-overlay.is-open');
+		if (!mainOpen && !delOpen) {
+			document.body.style.overflow = '';
+			document.body.style.paddingRight = '';
+			document.body.classList.remove('pqem-scroll-locked');
+		}
+	}
+
+	function openModal() {
+		const overlay = document.getElementById('pqem-overlay');
+		if (!overlay) return;
+
+		lockScroll();
+		overlay.classList.add('is-open');
+		setStatus('');
+	}
+
+	function closeModal() {
+		const overlay = document.getElementById('pqem-overlay');
+		if (!overlay) return;
+
+		overlay.classList.remove('is-open');
+		unlockScroll();
+	}
+
+	// ---- Заполнить форму данными поста ----
+	function populateForm(data) {
+		document.getElementById('pqem-post-id').value   = data.ID;
+		document.getElementById('pqem-title').value     = data.title;
+		document.getElementById('pqem-slug').value      = data.slug;
+		
+		const contentEl = document.getElementById('pqem-content');
+		contentEl.value = data.content;
+
+		const typeSelect   = document.getElementById('pqem-post-type');
+		const statusSelect = document.getElementById('pqem-post-status');
+		if (typeSelect)   typeSelect.value   = data.post_type;
+		if (statusSelect) statusSelect.value = data.post_status;
+
+		// --- Чекбоксы категорий (отмеченные — в начале каждой группы) ---
+		const catsList  = document.getElementById('pqem-cats-list');
+		const catsBadge = document.getElementById('pqem-cats-badge');
+		if (catsList && data.categories) {
+			catsList.innerHTML = '';
+			let checkedCount = 0;
+
+			// Разбиваем массив на группы: [ { header, items[] }, ... ]
+			const groups = [];
+			let currentGroup = null;
+			data.categories.forEach(cat => {
+				if (cat.group) {
+					currentGroup = { header: cat, items: [] };
+					groups.push(currentGroup);
+				} else if (currentGroup) {
+					currentGroup.items.push(cat);
+				}
+			});
+
+			// Рендерим: внутри каждой группы сначала отмеченные, потом остальные
+			groups.forEach(g => {
+				const sep = document.createElement('div');
+				sep.className = 'pqem-tax-group-label';
+				sep.textContent = g.header.name;
+				catsList.appendChild(sep);
+
+				const sorted = [
+					...g.items.filter(c => c.checked),
+					...g.items.filter(c => !c.checked),
+				];
+				sorted.forEach(cat => {
+					const label = document.createElement('label');
+					label.className = 'pqem-tax-item';
+					const cb = document.createElement('input');
+					cb.type      = 'checkbox';
+					cb.value     = cat.id;
+					cb.dataset.taxType = 'category';
+					cb.className = 'pqem-tax-cb';
+					if (cat.checked) { cb.checked = true; checkedCount++; }
+					cb.addEventListener('change', updateTaxBadges);
+					label.appendChild(cb);
+					label.appendChild(document.createTextNode(' ' + cat.name));
+					catsList.appendChild(label);
+				});
+			});
+
+			if (catsBadge) catsBadge.textContent = checkedCount;
+		}
+
+		// --- Чекбоксы тегов (отмеченные — в начале списка) ---
+		const tagsList  = document.getElementById('pqem-tags-list');
+		const tagsBadge = document.getElementById('pqem-tags-badge');
+		if (tagsList && data.tags) {
+			tagsList.innerHTML = '';
+			let checkedCount = 0;
+
+			// Сортируем: сначала отмеченные, потом остальные (алфавит внутри каждой группы сохраняется)
+			const sortedTags = [
+				...data.tags.filter(t => t.checked),
+				...data.tags.filter(t => !t.checked),
+			];
+			sortedTags.forEach(tag => {
+				const label = document.createElement('label');
+				label.className = 'pqem-tax-item';
+				const cb = document.createElement('input');
+				cb.type      = 'checkbox';
+				cb.value     = tag.id;
+				cb.dataset.taxType = 'tag';
+				cb.className = 'pqem-tax-cb';
+				if (tag.checked) { cb.checked = true; checkedCount++; }
+				cb.addEventListener('change', updateTaxBadges);
+				label.appendChild(cb);
+				label.appendChild(document.createTextNode(' ' + tag.name));
+				tagsList.appendChild(label);
+			});
+
+			if (tagsBadge) tagsBadge.textContent = checkedCount;
+		}
+
+		// Ставим курсор в конец и скроллим текст вниз
+		requestAnimationFrame(() => {
+			contentEl.focus();
+			contentEl.selectionStart = contentEl.selectionEnd = contentEl.value.length;
+			contentEl.scrollTop = contentEl.scrollHeight;
+		});
+	}
+
+	// Обновить цифры в бэджах при переключении чекбокса
+	function updateTaxBadges() {
+		const catsBadge = document.getElementById('pqem-cats-badge');
+		const tagsBadge = document.getElementById('pqem-tags-badge');
+		if (catsBadge) {
+			catsBadge.textContent = document.querySelectorAll('#pqem-cats-list .pqem-tax-cb:checked').length;
+		}
+		if (tagsBadge) {
+			tagsBadge.textContent = document.querySelectorAll('#pqem-tags-list .pqem-tax-cb:checked').length;
+		}
+	}
+
+	// ---- Загрузить данные поста по AJAX ----
+	function loadPost(postId, nonce) {
+		setStatus('Loading…');
+		setBusy(true);
+		document.getElementById('pqem-nonce').value = nonce;
+
+		const body = new URLSearchParams({
+			action:  '3ds_admin_get_post',
+			post_id: postId,
+			nonce:   nonce,
+		});
+
+		fetch(ajaxUrl, { method: 'POST', body })
+			.then(r => r.json())
+			.then(json => {
+				if (json.success) {
+					populateForm(json.data);
+					setStatus('');
+				} else {
+					setStatus(json.data?.message || 'Error loading post.', 'error');
+				}
+			})
+			.catch(() => setStatus('Network error.', 'error'))
+			.finally(() => setBusy(false));
+	}
+
+	// ---- Сохранить пост ----
+	function savePost(forceStatus) {
+		const postId  = document.getElementById('pqem-post-id').value;
+		const nonce   = document.getElementById('pqem-nonce').value;
+		const title   = document.getElementById('pqem-title').value.trim();
+		const slug    = document.getElementById('pqem-slug').value.trim();
+		const content = document.getElementById('pqem-content').value;
+		const type    = document.getElementById('pqem-post-type').value;
+		const status  = forceStatus || document.getElementById('pqem-post-status').value;
+
+		if (!title) {
+			setStatus('Title cannot be empty.', 'error');
+			return;
+		}
+
+		setBusy(true);
+		setStatus('Saving...', '');
+
+		// Собираем категории/теги
+		const catIds = Array.from(document.querySelectorAll('#pqem-cats-list .pqem-tax-cb:checked')).map(cb => cb.value);
+		const tagIds = Array.from(document.querySelectorAll('#pqem-tags-list .pqem-tax-cb:checked')).map(cb => cb.value);
+
+		const body = new URLSearchParams({
+			action:       '3ds_admin_update_post',
+			post_id:      postId,
+			nonce:        nonce,
+			title:        title,
+			slug:         slug,
+			content:      content,
+			post_type:    type,
+			post_status:  status,
+		});
+		catIds.forEach(id => body.append('category_ids[]', id));
+		tagIds.forEach(id => body.append('tag_ids[]', id));
+
+		fetch(ajaxUrl, { method: 'POST', body })
+			.then(r => r.json())
+			.then(json => {
+				setBusy(false);
+				if (json.success) {
+					setStatus('Saved!', 'success');
+					setTimeout(() => window.location.reload(), 600);
+				} else {
+					setStatus(json.data?.message || 'Error saving post.', 'error');
+				}
+			})
+			.catch(err => {
+				setBusy(false);
+				setStatus('Network error.', 'error');
+			});
+	}
+
+	// ---- Логика удаления ----
+	let _deleteBtnPending = null;
+
+	function openDeleteModal(btn) {
+		const overlay = document.getElementById('pqem-delete-overlay');
+		if (!overlay) return;
+
+		_deleteBtnPending = btn;
+		const postTitle = btn.dataset.postTitle || 'this post';
+		document.getElementById('pqem-delete-desc').textContent = 'Are you sure you want to move "' + postTitle + '" to the trash?';
+
+		lockScroll();
+		overlay.classList.add('is-open');
+	}
+
+	function closeDeleteModal() {
+		const overlay = document.getElementById('pqem-delete-overlay');
+		if (!overlay) return;
+
+		overlay.classList.remove('is-open');
+		unlockScroll();
+	}
+
+	function performDelete() {
+		if (!_deleteBtnPending) return;
+		const btn = _deleteBtnPending;
+		closeDeleteModal();
+
+		const postId = btn.dataset.postId;
+		const nonce  = btn.dataset.nonce;
+
+		btn.disabled = true;
+		btn.innerHTML = '<span class="pqem-spinner"></span> Deleting…';
+
+		const body = new URLSearchParams({
+			action:  '3ds_admin_delete_post',
+			post_id: postId,
+			nonce:   nonce,
+		});
+
+		fetch(ajaxUrl, { method: 'POST', body })
+			.then(r => r.json())
+			.then(json => {
+				if (json.success) {
+					window.location.href = json.data.redirect_url;
+				} else {
+					alert(json.data?.message || 'Could not delete post.');
+					btn.disabled = false;
+					btn.innerHTML = '<i class="fa fa-trash"></i> Delete';
+				}
+			})
+			.catch(() => {
+				alert('Network error.');
+				btn.disabled = false;
+				btn.innerHTML = '<i class="fa fa-trash"></i> Delete';
+			});
+	}
+
+	// ---- Event listeners ----
+	document.addEventListener('click', function(e) {
+
+		// Открыть редактор
+		const editBtn = e.target.closest('.pqem-open-btn');
+		if (editBtn) {
+			openModal();
+			loadPost(editBtn.dataset.postId, editBtn.dataset.nonce);
+			return;
+		}
+
+		// Удалить пост (открыть модал подтверждения)
+		const delBtn = e.target.closest('.pqem-delete-btn');
+		if (delBtn) {
+			openDeleteModal(delBtn);
+			return;
+		}
+
+		// Подтверждение или отмена удаления
+		if (e.target.closest('#pqem-delete-cancel')) {
+			closeDeleteModal();
+			return;
+		}
+		if (e.target.closest('#pqem-delete-confirm')) {
+			performDelete();
+			return;
+		}
+
+		// Закрыть модал: кнопка Cancel или X
+		if (e.target.closest('#pqem-close') || e.target.closest('#pqem-cancel')) {
+			closeModal();
+			return;
+		}
+
+		// Закрыть модалы: клик по оверлею вне диалога
+		const overlay = document.getElementById('pqem-overlay');
+		if (overlay && e.target === overlay) {
+			closeModal();
+			return;
+		}
+		const delOverlay = document.getElementById('pqem-delete-overlay');
+		if (delOverlay && e.target === delOverlay) {
+			closeDeleteModal();
+			return;
+		}
+
+		// Сохранить как черновик
+		if (e.target.closest('#pqem-save-draft')) {
+			savePost('draft');
+			return;
+		}
+
+		// Опубликовать
+		if (e.target.closest('#pqem-publish')) {
+			savePost('publish');
+			return;
+		}
+
+		// --- Кнопки редактора (Editor Tools) ---
+		const processEditorContent = (callback) => {
+			const el = document.getElementById('pqem-content');
+			const tempDiv = jQuery('<div>').html(el.value);
+			if (callback(tempDiv) === false) return;
+			el.value = tempDiv.html();
+		};
+
+		// 1. Обернуть изображения
+		if (e.target.closest('#pqem-warp-btn')) {
+			e.preventDefault();
+			processEditorContent(function($dom) {
+				if ($dom.find('.image-container').length > 0) { setStatus('Изображения уже обёрнуты!', 'warning'); return false; }
+				const i = $dom.find('img');
+				if (i.length === 0) { setStatus('Нет изображений в тексте!', 'error'); return false; }
+				if (i.length > 2) { setStatus('В тексте больше двух изображений!', 'warning'); return false; }
+				const f = i.first();
+				f.wrap('<div class="image-container"></div>');
+				if (i.length === 2) { f.after(i.eq(1)); }
+				setStatus('Изображения успешно обёрнуты!', 'success');
+			});
+			return;
+		}
+
+		// 2. Поменять местами изображения
+		if (e.target.closest('#pqem-swap-btn')) {
+			e.preventDefault();
+			processEditorContent(function($dom) {
+				const c = $dom.find('.image-container');
+				if (c.length === 0) { setStatus('Не найден контейнер для обмена.', 'warning'); return false; }
+				const i = c.find('img');
+				if (i.length < 2) { setStatus('В контейнере меньше двух изображений для обмена.', 'warning'); return false; }
+				i.eq(1).insertBefore(i.eq(0));
+				setStatus('Изображения поменялись местами!', 'success');
+			});
+			return;
+		}
+
+		// 3. Вставить 2-е изображение из буфера
+		if (e.target.closest('#pqem-paste-second-img-btn')) {
+			e.preventDefault();
+			if (!navigator.clipboard || !navigator.clipboard.readText) { setStatus('API буфера обмена не поддерживается.', 'error'); return; }
+			navigator.clipboard.readText().then(t => {
+				const u = t.trim();
+				if (!u) { setStatus('Буфер обмена пуст!', 'warning'); return; }
+				if (!/\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(u)) { setStatus('Ссылка не ведет на изображение (jpg, png, webp)!', 'error'); return; }
+				processEditorContent(function($dom) {
+					const c = $dom.find('.image-container');
+					if (c.length === 0) { setStatus('Контейнер .image-container не найден!', 'error'); return false; }
+					const m = c.find('img');
+					if (m.length >= 2) { m.eq(1).attr('src', u); setStatus('Ссылка на 2-е изображение заменена!', 'success'); }
+					else if (m.length === 1) { c.append(jQuery('<img>').attr('src', u)); setStatus('2-е изображение добавлено!', 'success'); }
+					else { setStatus('В контейнере нет изображений!', 'warning'); return false; }
+				});
+			}).catch(() => setStatus('Ошибка чтения буфера обмена!', 'error'));
+			return;
+		}
+
+		// 4. Заменить ссылку на скачивание (qtyfiles)
+		if (e.target.closest('#pqem-replace-dl-link-btn')) {
+			e.preventDefault();
+			if (!navigator.clipboard || !navigator.clipboard.readText) { setStatus('API буфера обмена не поддерживается.', 'error'); return; }
+			navigator.clipboard.readText().then(t => {
+				const u = t.trim();
+				if (!u) { setStatus('Буфер обмена пуст!', 'warning'); return; }
+				if (!u.includes('qtyfiles.com')) { setStatus('Ссылка должна быть с сервиса qtyfiles.com!', 'warning'); return; }
+				processEditorContent(function($dom) {
+					const l = $dom.find('div#dl a');
+					if (l.length === 0) { setStatus('Блок <div id="dl"> со ссылкой не найден!', 'error'); return false; }
+					l.attr('href', u);
+					setStatus('Ссылка на скачивание успешно заменена!', 'success');
+				});
+			}).catch(() => setStatus('Ошибка чтения буфера обмена!', 'error'));
+			return;
+		}
+
+		// 5. Вставить текст из буфера (Inject text)
+		if (e.target.closest('#pqem-inject-text-btn')) {
+			e.preventDefault();
+			if (!navigator.clipboard || !navigator.clipboard.readText) { setStatus('API буфера обмена не поддерживается.', 'error'); return; }
+			navigator.clipboard.readText().then(t => {
+				const textToInsert = t;
+				if (!textToInsert.trim()) { setStatus('Буфер обмена пуст!', 'warning'); return; }
+				const el = document.getElementById('pqem-content');
+				let content = el.value;
+				const mainRegex = /(\.jpg">\s*<\/div>)([\s\S]*?)(\[mycred_sell_this\]\s*\[member\]|\[member\])/;
+				const updatedContent = content.replace(mainRegex, function(fullMatch, startBlock, middleContent, endBlock) {
+					const linkRegex = /(https:\/\/3d-stuff\.community\/[^\s<]+)/g;
+					const foundLinks = middleContent.match(linkRegex);
+					let linksToKeep = foundLinks ? foundLinks.join('\n') : "";
+					let newMiddleContent;
+					const hrPosition = textToInsert.indexOf('<hr>');
+					if (hrPosition !== -1) {
+						newMiddleContent = textToInsert.substring(0, hrPosition);
+						if (linksToKeep) newMiddleContent += '\n' + linksToKeep;
+						newMiddleContent += '\n' + textToInsert.substring(hrPosition);
+					} else {
+						newMiddleContent = textToInsert;
+						if (linksToKeep) newMiddleContent += '\n' + linksToKeep;
+					}
+					return startBlock + '\n' + newMiddleContent + '\n' + endBlock;
+				});
+				if (content === updatedContent) {
+					setStatus('Структура для вставки текста не найдена!', 'error');
+				} else {
+					el.value = updatedContent;
+					setStatus('Текст из буфера успешно вставлен!', 'success');
+				}
+			}).catch(() => setStatus('Ошибка чтения буфера обмена!', 'error'));
+			return;
+		}
+
+		// 6. Очистить алмазы
+		if (e.target.closest('#pqem-clear-btn')) {
+			e.preventDefault();
+			const el = document.getElementById('pqem-content');
+			let c = el.value;
+			const r = /\[mycred_sell_this\]([\s\S]*?)\[\/mycred_sell_this\]/g;
+			if (!r.test(c)) { setStatus('Блоки [mycred_sell_this] не найдены.', 'warning'); return; }
+			const u = c.replace(r, (m, i) => {
+				const n = i.match(/(\[member\][\s\S]*?\[\/member\])/);
+				return n ? n[0] : '';
+			});
+			el.value = u;
+			setStatus('Блоки [mycred_sell_this] удалены!', 'success');
+			return;
+		}
+
+	});
+
+	// Закрыть по Escape
+	document.addEventListener('keydown', function(e) {
+		const overlay = document.getElementById('pqem-overlay');
+		if (e.key === 'Escape' && overlay && overlay.classList.contains('is-open')) {
+			closeModal();
+		}
+	});
+
+})();
+</script>
+<?php endif; ?>
 
 <?php echo do_shortcode('[voting_buttons]'); ?>	
