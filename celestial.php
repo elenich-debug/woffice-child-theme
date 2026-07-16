@@ -5,7 +5,8 @@
 
 // ОПТИМИЗАЦИЯ TTFB: Фрагментное кэширование для неавторизованных пользователей
 if (!is_user_logged_in()) {
-    $cache_key = 'woffice_card_' . get_the_ID() . '_' . get_post_modified_time('U', true);
+    $host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
+    $cache_key = 'woffice_card_' . get_the_ID() . '_' . get_post_modified_time('U', true) . '_' . md5($host);
     $cached_html = get_transient($cache_key);
     if ($cached_html !== false) {
         echo $cached_html;

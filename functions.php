@@ -1,4 +1,6 @@
 <?php
+require_once get_stylesheet_directory() . '/inc/optimizations.php';
+
 function woffice_child_scripts() {
     if ( ! is_admin() && ! in_array( $GLOBALS['pagenow'], array( 'wp-login.php', 'wp-register.php' ) ) ) {
         $theme_info = wp_get_theme();
