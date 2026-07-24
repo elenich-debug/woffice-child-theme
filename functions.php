@@ -329,30 +329,7 @@ document.addEventListener('click', function(e) {
 });
 
 
-/**
- * Скрываем только часть текста (про инвайты), если регистрация отключена
- */
-add_action('wp_head', 'woffice_hide_invite_only_text');
-add_action('login_head', 'woffice_hide_invite_only_text');
 
-function woffice_hide_invite_only_text() {
-    if (!get_option('users_can_register')) {
-        ?>
-        <style type="text/css">
-            
-            .form-wrapper header p:nth-of-type(3), 
-            .form-wrapper header p:nth-of-type(4) {
-                display: none !important;
-            }
-
-            /* Немного поправим отступ у второго абзаца для красоты */
-            .form-wrapper header p:nth-of-type(2) {
-                margin-bottom: 10px;
-            }
-        </style>
-        <?php
-    }
-}
 
 // Добавьте асинхронную загрузку для стилей:
 function add_async_attribute($tag, $handle) {

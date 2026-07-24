@@ -79,11 +79,7 @@ if(get_post_status() == 'draft')
                     <?php 
                     /*GETTING THE POST THUMBNAIL URL*/
                     $featured_height = (function_exists('woffice_get_post_rdx_option')) ? woffice_get_post_rdx_option(get_the_ID(), 'featured_height') : '';
-                    
-                    ob_start();
-                    Woffice_Frontend::render_featured_image_single_post(get_the_ID(), $featured_height); 			
-                    $thumb_html = ob_get_clean();
-                    echo function_exists('iar_process_images_in_html') ? iar_process_images_in_html($thumb_html) : $thumb_html;
+                    Woffice_Frontend::render_featured_image_single_post(get_the_ID(), $featured_height);
                     ?>
                 <?php else: ?>
                     <img src="<?php echo get_stylesheet_directory_uri() ?>/images/blog.png" alt="Default blog image"> <!-- Добавлен alt -->

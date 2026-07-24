@@ -84,7 +84,7 @@ array_push($classes, $design_update_class);
 								$login_text = woffice_get_theming_option('login_text');
 								if (!empty($login_text)): ?>
 
-									<p id="login-text"><?php echo wp_kses_post($login_text); ?></p>
+									<div id="login-text"><?php echo wp_kses_post($login_text); ?></div>
 
 								<?php endif; ?>
 
@@ -162,5 +162,52 @@ array_push($classes, $design_update_class);
 
 		<?php woffice_login_render_script(); ?>
 
+		<style>
+			/* Hide the login text by default, show it when class is present */
+			#login-text { display: none !important; }
+			.show-register-text #login-text { display: block !important; }
+		</style>
+		<script>
+			jQuery(document).ready(function($) {
+				function toggleWelcomeText() {
+					if ($('#register-form').is(':visible')) {
+						$('body').addClass('show-register-text');
+						$('#loginform, #lostpasswordform, #go-back-to-login, #register-wrapper, a.password-lost, .social-login-btns').hide();
+					} else {
+						$('body').removeClass('show-register-text');
+					}
+				}
+
+				// Check when buttons are clicked (Woffice uses 1000ms timeouts)
+				$('#register-trigger, #goback-trigger a').on('click', function() {
+					setTimeout(toggleWelcomeText, 1050);
+				});
+
+				// Initial checks on page load (important after form POST errors)
+				toggleWelcomeText();
+				setTimeout(toggleWelcomeText, 100);
+				setTimeout(toggleWelcomeText, 500);
+				setTimeout(toggleWelcomeText, 1100);
+
+				// Monkey-patch the global Woffice functions for robustness
+				if (typeof window.show_login === 'function') {
+					var orig_show_login = window.show_login;
+					window.show_login = function(loader) {
+						orig_show_login(loader);
+						$('body').removeClass('show-register-text');
+					};
+				}
+				if (typeof window.show_register === 'function') {
+					var orig_show_register = window.show_register;
+					window.show_register = function() {
+						orig_show_register();
+						$('#loginform, #lostpasswordform, #go-back-to-login, #register-wrapper, a.password-lost, .social-login-btns').hide();
+						setTimeout(function() {
+							$('body').addClass('show-register-text');
+						}, 1050);
+					};
+				}
+			});
+		</script>
 	</body>
 </html>

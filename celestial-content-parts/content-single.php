@@ -20,9 +20,13 @@ if(get_post_status() == 'draft')
 				<div class="blog-thumb">
 					<?php if (is_single() && !woffice_validate_bool_option($hide_image_single_post) && has_post_thumbnail()) : ?>
 						<!-- THUMBNAIL IMAGE -->
-						<?php /*GETTING THE POST THUMBNAIL URL*/
-							$featured_height = (function_exists('woffice_get_post_rdx_option')) ? woffice_get_post_rdx_option(get_the_ID(), 'featured_height') : '';
-							Woffice_Frontend::render_featured_image_single_post($post->ID, $featured_height);
+						<?php /* ОПТИМИЗИРОВАННЫЙ ВЫВОД LCP-ИЗОБРАЖЕНИЯ (LCP FIX) */
+							$auto_height = woffice_get_theming_option( 'auto_height_featured_image', false);
+							$auto_height_class = woffice_validate_bool_option($auto_height) ? ' auto-height' : ' fixed-height';
+							
+							echo '<div class="intern-thumbnail' . esc_attr($auto_height_class) . '">';
+							echo wp_get_attachment_image(get_post_thumbnail_id($post->ID), 'full', false, ['fetchpriority' => 'high']);
+							echo '</div>';
 						?>
 					<?php endif; ?>
 				</div>
