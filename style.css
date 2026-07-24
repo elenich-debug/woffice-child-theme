@@ -26,7 +26,7 @@ Version: 1.0.3
 
 #login-logo img,
 #woffice-login #login-logo img {
-    filter: brightness(0.25) contrast(1.1) !important;
+    filter: brightness(0.25) contrast(0.2) !important;
     transition: filter 0.3s ease;
 }
 
@@ -187,7 +187,6 @@ Version: 1.0.3
     cursor: pointer !important;
     position: relative !important;
     vertical-align: middle !important;
-    margin-right: 8px !important;
     outline: none !important;
     transition: all 0.2s ease !important;
 }
@@ -214,11 +213,6 @@ Version: 1.0.3
 }
 
 #woffice-login #woffice-login-left .form-wrapper .login-tabs-wrapper form .login-remember label,
-#woffice-login #woffice-login-left .form-wrapper .login-tabs-wrapper form label:has(input[type=checkbox]) {
-    display: inline-flex !important;
-    align-items: center !important;
-    cursor: pointer !important;
-    user-select: none;
     color: #2d3748 !important;
     font-weight: 500;
 }
@@ -244,9 +238,9 @@ body .infobox {
     padding: 20px 24px !important;
     border: none !important;
     box-shadow: 0 15px 40px rgba(0, 0, 0, 0.25) !important;
-    backdrop-filter: blur(12px) !important;
-    -webkit-backdrop-filter: blur(12px) !important;
-    opacity: 0.95 !important;
+    backdrop-filter: blur(16px) !important;
+/*     -webkit-backdrop-filter: blur(16px) !important; */
+    opacity: 0.75 !important;
     transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
 }
 
@@ -280,6 +274,51 @@ body .infobox.fa-exclamation-triangle {
 #lostpasswordform ~ #register-wrapper,
 #resetpassform ~ #register-wrapper {
     display: none !important;
+}
+
+/* --- Перенос Lost Password в строку к Remember Me --- */
+#loginform .login-remember {
+    display: flex !important;
+    flex-direction: row !important; /* Перебиваем flex-direction: column из родительской темы */
+    justify-content: space-between !important;
+    align-items: center !important;
+    margin-bottom: 20px !important;
+}
+
+#loginform .login-remember label {
+    margin-bottom: 0 !important; /* Убираем лишний отступ у чекбокса */
+}
+
+/* Стилизация Lost Password в виде бейджа */
+body #loginform .login-remember a.password-lost,
+a.password-lost {
+    display: inline-block !important;
+    background-color: rgba(130, 180, 64, 0.12) !important;
+    color: #82b440 !important;
+    padding: 5px 14px !important;
+    border-radius: 20px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    text-decoration: none !important;
+    transition: all 0.25s ease !important;
+    margin: 0 !important;
+}
+
+body #loginform .login-remember a.password-lost:hover,
+a.password-lost:hover {
+    background-color: #9bce54 !important; /* Светлее стандартного зелёного */
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(130, 180, 64, 0.25) !important;
+}
+
+/* Ядерная специфичность для цвета текста при наведении */
+html body #page-wrapper #content-container #woffice-login .form-wrapper #loginform .login-remember a.password-lost:hover,
+html body #page-wrapper #content-container #woffice-login .form-wrapper #loginform .login-remember a.password-lost:hover *,
+body #loginform .login-remember a.password-lost:hover,
+body #loginform .login-remember a.password-lost:hover *,
+a.password-lost:hover,
+a.password-lost:hover * {
+    color: #ffffff !important;
 }
 
 /* Весь текст во всех уведомлениях — строго белый (высокая специфичность) */

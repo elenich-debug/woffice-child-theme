@@ -189,6 +189,11 @@ array_push($classes, $design_update_class);
 				setTimeout(toggleWelcomeText, 500);
 				setTimeout(toggleWelcomeText, 1100);
 
+				// Move "Lost Password" into "Remember Me" row for better UI
+				if ($('#loginform .login-remember').length && $('a.password-lost').length) {
+					$('#loginform .login-remember').append($('a.password-lost'));
+				}
+
 				// Monkey-patch the global Woffice functions for robustness
 				if (typeof window.show_login === 'function') {
 					var orig_show_login = window.show_login;
