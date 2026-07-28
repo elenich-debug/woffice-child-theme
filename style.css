@@ -86,15 +86,14 @@ Version: 1.0.3
 }
 
 /* Анимация "выпрыгивания" при наведении. 
-   Мы разделяем анимацию: <a> только поднимается (чтобы тултип не масштабировался и текст не дёргался),
-   а сама <img> увеличивается. */
+   Чтобы избежать "дрожания" (когда мышка попадает на край элемента, он уезжает из-под курсора и ховер сбрасывается),
+   мы оставляем родительский <a> НЕПОДВИЖНЫМ. Анимируется только картинка внутри него! */
 .mycred-sell-this-buyers a.buyer-avatar-link:hover {
-  transform: translateY(-8px) !important;
-  z-index: 10 !important; /* Чтобы активная аватарка была поверх остальных */
+  z-index: 10 !important; /* Только поднимаем слой, сам блок стоит на месте */
 }
 
 .mycred-sell-this-buyers a.buyer-avatar-link:hover img {
-  transform: scale(1.15) !important;
+  transform: translateY(-8px) scale(1.15) !important;
   border-color: #82b43f !important; /* Фирменный зеленый цвет Woffice */
   box-shadow: 0 10px 20px rgba(130, 180, 63, 0.3) !important;
 }
@@ -111,7 +110,7 @@ Version: 1.0.3
 .mycred-sell-this-buyers a.buyer-avatar-link::after {
   content: attr(data-tooltip);
   position: absolute;
-  bottom: calc(100% + 8px); /* Фиксированный отступ над аватаркой */
+  bottom: calc(100% + 14px); /* Подняли чуть выше, чтобы увеличившаяся аватарка не перекрывала тултип */
   left: 50%;
   transform: translateX(-50%);
   background: #ffffff;
