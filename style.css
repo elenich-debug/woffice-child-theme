@@ -6,6 +6,567 @@ Template: woffice
 Version: 1.0.3
 */
 
+/* --- Блок Recent Interest (Аватарки покупателей) --- */
+/* --- Блок Recent Interest (Аватарки покупателей) --- */
+.blog-authorbox-middle {
+  display: flex;
+  flex-direction: row; /* Выстраиваем в одну линию с аватарками */
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0 20px;
+  gap: 12px; /* Расстояние между заголовком и аватарками */
+  min-width: 0; /* Обязательно для работы overflow-x у дочерних элементов внутри grid/flex-контейнера */
+}
+.recent-interest-header {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #a0aec0;
+  margin-bottom: 0; /* Убрали нижний отступ */
+  letter-spacing: 0.5px;
+  white-space: nowrap; /* Запрещаем перенос текста на новую строку */
+}
+.mycred-sell-this-buyers {
+  display: flex;
+  flex-direction: row !important; /* Принудительно в одну линию */
+  justify-content: flex-start;
+  align-items: center;
+  flex-wrap: nowrap !important; /* Запрещаем перенос */
+  padding: 65px 15px 20px 15px; /* Вертикальный отступ для тултипов, 15px горизонтальный для теней */
+  margin: -65px -15px -20px -15px; /* Компенсируем отступы, чтобы блок оставался на своем месте */
+  overflow-x: auto; /* Включаем горизонтальную прокрутку */
+  overflow-y: visible; /* Прячем вертикальную прокрутку */
+  flex: 1 1 auto;
+  min-width: 0;
+  
+  /* Кастомный тонкий скроллбар */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(130, 180, 63, 0.5) transparent;
+}
+
+/* Стилизация скроллбара для Chrome/Safari/Edge */
+.mycred-sell-this-buyers::-webkit-scrollbar {
+  height: 4px;
+}
+.mycred-sell-this-buyers::-webkit-scrollbar-track {
+  background: transparent;
+}
+.mycred-sell-this-buyers::-webkit-scrollbar-thumb {
+  background-color: rgba(130, 180, 63, 0.3);
+  border-radius: 4px;
+}
+.mycred-sell-this-buyers::-webkit-scrollbar-thumb:hover {
+  background-color: #82b43f;
+}
+/* Контейнер-ссылка (или напрямую изображение, если ссылки нет) */
+.mycred-sell-this-buyers a.buyer-avatar-link,
+.mycred-sell-this-buyers > img {
+  display: block;
+  margin: 0 0 0 -12px !important; /* Отрицательный отступ слева для наслоения */
+  position: relative;
+  z-index: 1;
+  border-radius: 50%;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+}
+.mycred-sell-this-buyers a.buyer-avatar-link:first-child,
+.mycred-sell-this-buyers > img:first-child {
+  margin-left: 0 !important; /* Первому элементу отступ не нужен */
+}
+
+/* Сама аватарка */
+.mycred-sell-this-buyers img {
+  width: 40px !important; /* Чуть меньше для компактности */
+  height: 40px !important;
+  border-radius: 50% !important; /* Делаем аватарки круглыми */
+  border: 2px solid #ffffff !important; /* Белая рамка для красивого эффекта перекрытия */
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1) !important;
+  display: block;
+  margin: 0 !important; /* Сбрасываем внутренний отступ */
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important; /* Плавная анимация */
+}
+
+/* Анимация "выпрыгивания" при наведении */
+.mycred-sell-this-buyers a.buyer-avatar-link:hover,
+.mycred-sell-this-buyers > img:hover {
+  transform: translateY(-8px) scale(1.15) !important;
+  z-index: 10 !important; /* Чтобы активная аватарка была поверх остальных */
+}
+
+/* Подсветка фирменным зеленым цветом */
+.mycred-sell-this-buyers a.buyer-avatar-link:hover img,
+.mycred-sell-this-buyers > img:hover {
+  border-color: #82b43f !important; /* Фирменный зеленый цвет Woffice */
+  box-shadow: 0 10px 20px rgba(130, 180, 63, 0.3) !important;
+}
+
+/* Кастомный всплывающий тултип с именем пользователя (в фирменном стиле) */
+.mycred-sell-this-buyers a.buyer-avatar-link::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(5px);
+  background: #ffffff;
+  color: #82b43f; /* Фирменный зеленый */
+  font-size: 0.65rem; /* Уменьшили шрифт по просьбе */
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+  z-index: 20;
+  pointer-events: none; /* Чтобы тултип не перехватывал клики */
+}
+
+/* Показываем тултип при наведении */
+.mycred-sell-this-buyers a.buyer-avatar-link:hover::after {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(-8px); /* Всплывает чуть выше */
+}
+
+/* Выравниваем тултип первой аватарки по левому краю, чтобы он не обрезался при прокрутке */
+.mycred-sell-this-buyers a.buyer-avatar-link:first-child::after {
+  left: 0;
+  transform: translateX(0) translateY(5px);
+}
+.mycred-sell-this-buyers a.buyer-avatar-link:first-child:hover::after {
+  transform: translateX(0) translateY(-8px);
+}
+
+/* Выравниваем тултип последней аватарки по правому краю */
+.mycred-sell-this-buyers a.buyer-avatar-link:last-child::after {
+  left: auto;
+  right: 0;
+  transform: translateX(0) translateY(5px);
+}
+.mycred-sell-this-buyers a.buyer-avatar-link:last-child:hover::after {
+  transform: translateX(0) translateY(-8px);
+}
+
+/* Если аватарка всего одна (она и первая, и последняя), используем левое выравнивание */
+.mycred-sell-this-buyers a.buyer-avatar-link:only-child::after {
+  left: 0;
+  right: auto;
+  transform: translateX(0) translateY(5px);
+}
+.mycred-sell-this-buyers a.buyer-avatar-link:only-child:hover::after {
+  transform: translateX(0) translateY(-8px);
+}
+
+
+/* --- Блок статьи (Blog Single Item) --- */
+.celst-blog-single-wrapper .blog-single-item {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+/* --- Блок автора (Author Box) --- */
+.celst-blog-single-wrapper .blog-single-item .blog-single-content .blog-authorbox,
+.blog-authorbox {
+    background-color: #f6f5f3 !important;
+    margin: 15px 0 20px;
+    border-radius: 8px;
+    padding: 15px 20px; /* Уменьшили высоту блока (padding) */
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr) max-content;
+    align-items: center;
+    gap: 20px;
+    overflow: visible !important; /* Гарантируем, что тултип не обрежется родителем */
+}
+
+/* Левая часть блока автора (Аватар + Имя) */
+.celst-blog-single-wrapper .blog-single-item .blog-single-content .blog-authorbox .blog-authorbox-left,
+.blog-authorbox-left {
+    display: flex;
+    flex-direction: row; /* Теперь элементы в строку */
+    align-items: center;
+    justify-content: flex-start;
+}
+
+/* Аватарка автора */
+.blog-authorbox-left img.author-avatar-img {
+  border-radius: 10% !important;
+  width: 55px !important;
+  height: 55px !important;
+  object-fit: cover;
+  margin-bottom: 0;
+  margin-right: 15px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+/* Имя автора */
+.celst-blog-single-wrapper .blog-single-item .blog-single-content .blog-authorbox .blog-authorbox-left h3,
+.celst-blog-single-wrapper .blog-single-item .blog-single-content .blog-authorbox .blog-authorbox-left h3 a {
+    color: #82b43f !important;
+    transition: color 0.2s ease;
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    text-align: left;
+    letter-spacing: 0.5px;
+}
+.celst-blog-single-wrapper .blog-single-item .blog-single-content .blog-authorbox .blog-authorbox-left h3 a:hover {
+    color: #6a9531 !important;
+}
+
+/* Правая часть блока автора (Лайки + Кнопки) */
+.celst-blog-single-wrapper .blog-single-item .blog-single-content .blog-authorbox .blog-authorbox-right {
+    display: flex;
+    align-items: center !important; /* Центрируем элементы по вертикали */
+    justify-content: flex-end !important; /* Всё прижимаем вправо */
+    gap: 25px; /* Расстояние между лайком и кнопками */
+}
+
+/* Блок с лайком */
+.blog-authorbox-right .blog-like-container {
+    margin: 0 !important;
+    display: flex;
+    flex-direction: row; /* Возвращаем в одну строку */
+    align-items: center;
+    justify-content: center;
+    flex-grow: 0 !important;
+    gap: 12px; /* Расстояние между текстом и пилюлей */
+}
+.blog-authorbox-right .blog-like-container .like-text {
+    font-size: 0.7rem; /* Микро-лейбл */
+    color: #8fa0b3;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 700;
+    margin: 0;
+    line-height: 1;
+}
+.celst-blog-single-wrapper .blog-single-item .blog-single-content .blog-authorbox .blog-authorbox-right .blog-like-container .wiki-like {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Расстояние между иконкой и цифрой */
+    background: #ffffff;
+    padding: 6px 16px;
+    border-radius: 20px; /* Кнопка-пилюля */
+    border: 1px solid rgba(0, 0, 0, 0.04);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+.celst-blog-single-wrapper .blog-single-item .blog-single-content .blog-authorbox .blog-authorbox-right .blog-like-container .wiki-like:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 152, 0, 0.15);
+    border-color: rgba(255, 152, 0, 0.2);
+}
+.celst-blog-single-wrapper .blog-single-item .blog-single-content .blog-authorbox .blog-authorbox-right .blog-like-container .wiki-like > a,
+.celst-blog-single-wrapper .blog-single-item .blog-single-content .blog-authorbox .blog-authorbox-right .blog-like-container .wiki-like > span {
+    display: flex;
+    align-items: center;
+}
+.celst-blog-single-wrapper .blog-single-item .blog-single-content .blog-authorbox .blog-authorbox-right .blog-like-container .wiki-like i {
+    font-size: 20px; /* Сделали иконку чуть аккуратнее для кнопки */
+    color: #ff9800; 
+    transition: transform 0.2s ease;
+    display: inline-block;
+}
+.celst-blog-single-wrapper .blog-single-item .blog-single-content .blog-authorbox .blog-authorbox-right .blog-like-container .wiki-like:hover i {
+    transform: scale(1.15); /* Увеличиваем лайк при наведении на всю пилюлю */
+}
+.celst-blog-single-wrapper .blog-single-item .blog-single-content .blog-authorbox .blog-authorbox-right .blog-like-container .wiki-like .count {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #4a5568;
+}
+
+/* Блок с кнопками (прижимаем к правому краю через flex-end родителя) */
+.blog-authorbox-right .author_btn {
+    display: flex;
+    align-items: center;
+    margin: 0 !important;
+    float: none !important;
+    flex-grow: 0 !important;
+}
+
+/* --- Оверлей --- */
+#overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4); /* Чуть темнее для лучшего контраста */
+    z-index: 9999; /* Выше всех */
+    backdrop-filter: blur(4px); /* Эффект матового стекла (размытие фона) */
+}
+
+
+/* --- Кнопки --- */
+#dl {
+  text-align: center;
+}
+
+/* Общие стили для кастомных кнопок */
+.btn-qty,
+.btn-buy,
+.btn-bmark {
+  font-size: 1.2rem;
+  font-weight: 500;
+  color: #ffffff !important;
+  padding: 10px 24px;        /* Красивые внутренние отступы */
+  border-radius: 6px;        /* Современное скругление углов */
+  border: none;
+  cursor: pointer;
+  display: inline-flex;      /* Идеальное выравнивание иконки и текста */
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease; /* Плавность всех анимаций */
+  text-decoration: none;
+}
+
+/* Отступ для иконок внутри кнопок */
+.btn-qty i,
+.btn-buy i {
+  margin-right: 8px;
+}
+
+/* --- Кнопка Qty (Количество) --- */
+.btn-qty {
+  background-color: #3399ff !important;
+  margin: 16px;
+}
+.btn-qty:hover {
+  background-color: #4da6ff !important; /* Чуть светлее */
+  transform: translateY(-2px);          /* Приподнятие */
+  box-shadow: 0 5px 15px rgba(51, 153, 255, 0.35); /* Мягкое свечение */
+}
+
+/* --- Кнопка Buy (Купить) --- */
+.btn-buy {
+  background-color: #2eabc4 !important;
+}
+.btn-buy:hover {
+  background-color: #38bdd7 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(46, 171, 196, 0.35);
+}
+
+/* --- Кнопка Bookmark (Закладки) --- */
+/* Стили для счетчика внутри кнопки Bookmark (чтобы он выглядел как бейдж, а не как текст в скобках) */
+.btn-bmark .cbxwpbkmarktrig-count {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(255, 255, 255, 0.25);
+  border-radius: 12px;
+  padding: 1px 7px;
+  font-size: 0.85rem !important;
+  font-weight: 700;
+  min-width: 22px;
+  line-height: 1.3;
+  margin-left: 8px;
+  font-style: normal !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.btn-bmark {
+  background-color: #ff6535 !important;
+  margin-right: 10px;
+  width: 210px !important; /* Жестко фиксируем ширину с запасом, чтобы кнопка вообще не меняла размер */
+}
+.btn-bmark:hover {
+  background-color: #ff7f54 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(255, 101, 53, 0.35);
+}
+
+/* Внутренние элементы Bookmark для идеального выравнивания */
+.btn-bmark .cbxwpbkmarkwrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+.cbxwpbkmarktrig {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none !important;
+  width: 100%;
+}
+.cbxwpbkmarktrig .cbxwpbkmarktrig-label {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  color: #ffffff;
+  font-weight: 500;
+  font-size: 1.2rem;
+  line-height: 1; /* Убираем лишние отступы сверху/снизу */
+}
+.cbxwpbkmarktrig .cbxwpbkmarktrig-icon {
+  filter: brightness(0) invert(1);
+  display: inline-flex;
+  align-items: center;
+  height: 20px !important; /* Фиксируем высоту иконки */
+  margin-top: -2px; /* Оптическая компенсация для звезды */
+}
+
+/* Выпадающий список Bookmark */
+/* Выпадающий список Bookmark */
+.cbxwpbkmarklistwrap {
+  font-family: inherit;
+  display: none;
+  position: absolute;
+  left: auto !important;
+  right: -24px !important; /* Компенсируем padding кнопки (24px справа), чтобы выровнять строго по её правому краю */
+  transform: none !important;
+  top: auto !important; /* Отменяем жесткий отступ сверху */
+  bottom: calc(100% + 20px) !important; /* Компенсируем padding сверху (10px) + добавляем зазор 10px = 20px */
+  z-index: 100;
+  background: #ffffff;
+  width: 250px !important; /* Максимально компактная ширина */
+  color: #2d3748;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15) !important;
+  padding: 0 !important;
+  overflow: hidden;
+  border: 1px solid rgba(0,0,0,0.05);
+}
+
+/* Шапка всплывающего окна */
+.cbxwpbkmarklistwrap .addto-head {
+  padding: 10px 14px !important; /* Компактные отступы */
+  background-color: #f7fafc;
+  border-bottom: 1px solid #edf2f7 !important;
+  margin-bottom: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+}
+.cbxwpbkmarklistwrap .cbxwpbkmarktrig_label {
+  font-weight: 600 !important;
+  color: #1a202c !important;
+  font-size: 0.95rem !important; /* Уменьшен шрифт */
+}
+.cbxwpbkmarklistwrap .cbxwpbkmarktrig_close {
+  border: none !important;
+  background: #edf2f7 !important;
+  border-radius: 50% !important;
+  width: 24px !important; /* Уменьшена кнопка закрытия */
+  height: 24px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #718096 !important;
+  transition: all 0.2s ease !important;
+  padding: 0 !important;
+  margin-left: auto !important;
+}
+.cbxwpbkmarklistwrap .cbxwpbkmarktrig_close:hover {
+  background: #e2e8f0 !important;
+  color: #1a202c !important;
+  transform: scale(1.1);
+}
+
+/* Поиск */
+.cbxwpbkmarklistwrap .cbxlbjs-searchbar-wrapper {
+  padding: 10px 14px 8px 14px !important; /* Компактно */
+  position: relative;
+}
+.cbxwpbkmarklistwrap .cbxlbjs-searchbar {
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 6px !important;
+  padding: 6px 28px 6px 10px !important;
+  background: #ffffff !important;
+  font-size: 0.85rem !important; /* Уменьшен шрифт */
+  transition: all 0.3s ease !important;
+  width: 100% !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.02) !important;
+}
+.cbxwpbkmarklistwrap .cbxlbjs-searchbar:focus {
+  border-color: #ff6535 !important;
+  box-shadow: 0 0 0 2px rgba(255, 101, 53, 0.15) !important;
+  outline: none !important;
+}
+.cbxwpbkmarklistwrap .cbxlbjs-searchbar-icon {
+  position: absolute !important;
+  right: 22px !important;
+  left: auto !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  color: #a0aec0 !important;
+  font-size: 0.9rem !important;
+}
+
+/* Список категорий */
+.cbxwpbkmarklistwrap .cbxlbjs-list {
+  padding: 0 8px 8px 8px !important;
+  max-height: 180px !important;
+  overflow-y: auto !important;
+}
+.cbxwpbkmarklistwrap .cbxlbjs-list::-webkit-scrollbar {
+  width: 4px;
+}
+.cbxwpbkmarklistwrap .cbxlbjs-list::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 10px;
+}
+.cbxwpbkmarklistwrap .cbxlbjs-item {
+  padding: 6px 10px !important; /* Компактно */
+  border-radius: 6px !important;
+  transition: all 0.2s ease !important;
+  margin-bottom: 1px !important;
+}
+.cbxwpbkmarklistwrap .cbxlbjs-item:hover {
+  background-color: #f7fafc !important;
+}
+.cbxwpbkmarklistwrap .cbxlbjs-item-name {
+  font-size: 0.9rem !important; /* Уменьшен шрифт */
+  color: #2d3748 !important;
+  font-weight: 500 !important;
+}
+
+/* Подвал (Кнопки действий) */
+.cbxwpbkmarklistwrap .cbxwpbkmark-toolbar {
+  border-top: 1px solid #edf2f7 !important;
+  padding: 10px 14px !important; /* Компактно */
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  background-color: #f7fafc !important;
+  margin: 0 !important;
+}
+.cbxwpbkmarklistwrap .cbxwpbkmark-toolbar > span {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 6px !important;
+  padding: 6px 10px !important; /* Компактные отступы */
+  color: #4a5568 !important;
+  font-weight: 600 !important;
+  font-size: 0.85rem !important; /* Уменьшен шрифт */
+  transition: all 0.2s ease !important;
+  flex: 1 1 auto !important;
+  white-space: nowrap !important;
+  text-align: center !important;
+  cursor: pointer !important;
+  /* Убрали !important у display: flex, чтобы скрипт плагина мог делать display: none */
+  display: flex;
+  align-items: center !important;
+  justify-content: center !important;
+}
+.cbxwpbkmarklistwrap .cbxwpbkmark-toolbar > span:hover {
+  border-color: #cbd5e0 !important;
+  color: #1a202c !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
+}
+
+/* Контейнер автора */
+.author_btn {
+  display: flex;
+  justify-content: flex-end;
+  }
+
+
+
 /* --- Светлая (чистая) стилизация форм входа/регистрации --- */
 #woffice-login #woffice-login-left .form-wrapper {
     background-color: #ffffff !important;
@@ -402,14 +963,14 @@ a.password-lost:hover * {
   display: inline-block;
   text-transform: uppercase;
   color: #fff;
-  font-weight: 800;
+  font-weight: 700;
   font-family: "Ysabeau Infant", helvetica, arial, sans-serif;
   font-size: 1.1rem;
   white-space: normal;
   text-align: center;
   text-decoration: none;
   cursor: pointer;
-  padding: 5px 18px;
+  padding: 6px 18px;
   margin: .5rem .5rem !important;
   border: 0;
   border-radius: .2rem;

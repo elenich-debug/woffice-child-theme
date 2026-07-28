@@ -107,13 +107,9 @@ if (get_post_type() === 'request') {
 					<?php if (is_single() && (get_post_type() == 'post' || get_post_type() == 'mature' || get_post_type() == 'bundle') && !woffice_validate_bool_option($hide_author_box)) : ?>
 					<div class="blog-authorbox">
 						<div class="blog-authorbox-left">
-						<?php echo get_avatar(get_the_author_meta('ID'), 96, '', '', array('class' => 'rounded-circle')); ?>
-						</div>
-						<div class="blog-authorbox-right">
+						<?php echo get_avatar(get_the_author_meta('ID'), 64, '', '', array('class' => 'author-avatar-img')); ?>
 							<?php 
 								$display = woffice_get_name_to_display(get_the_author_meta('ID'));
-							?>
-							<?php 
 							echo '<div class="author-title">';
 								if (function_exists('bp_is_active')) {
 									$mem_domain = function_exists('bp_members_get_user_url') ? bp_members_get_user_url(get_the_author_meta('ID')) : bp_core_get_user_domain(get_the_author_meta('ID'));
@@ -121,9 +117,26 @@ if (get_post_type() === 'request') {
 								} else {
 									echo '<h3>'.$display.'</h3>';
 								}
-								echo '<p class="like-text">'.__('Did you like this stuff ?','woffice').'</p>';
 								echo '</div>';
 							?>
+						</div>
+						<?php if ( function_exists('mycred_post_is_for_sale') && mycred_post_is_for_sale( get_post() ) ) : ?>
+						<div class="blog-authorbox-middle">
+							<?php 
+							if ( is_single('breena-boots-for-genesis-9-and-8-female') ) {
+								echo '<div class="recent-interest-header" style="white-space: nowrap; font-size: 0.8rem; font-weight: 700; color: #a4adc1; letter-spacing: 0.5px; text-transform: uppercase;">Recent Interest</div>';
+								echo '<div class="mycred-sell-this-buyers">';
+								for ($i=1; $i<=30; $i++) {
+									echo '<a href="#" data-tooltip="User '.$i.'" class="buyer-avatar-link"><img alt="User '.$i.'" src="https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y&s=40" class="avatar avatar-40 photo" height="40" width="40" /></a>';
+								}
+								echo '</div>';
+							} else {
+								echo do_shortcode('[UAS_role roles="administrator, editor, eminent"]<div class="recent-interest-header">Recent Interest</div>[mycred_content_buyer_avatars number=500 size=50][/UAS_role]'); 
+							}
+							?>
+						</div>
+						<?php endif; ?>
+						<div class="blog-authorbox-right">
 							<?php 
 							$desc = get_the_author_meta('description');
 							if(!empty($desc)) {
@@ -135,6 +148,7 @@ if (get_post_type() === 'request') {
 									$post_ID = get_the_id();
 									$vote_count = get_post_meta($post_ID, "votes_count", true);
 									$vote_count_disp = (empty($vote_count)) ? '0' : $vote_count; 
+									echo '<div class="like-text">'.__('Did you like this stuff ?','woffice').'</div>';
 									echo '<p class="wiki-like">';
 										if(Woffice_Blog::like_user_has_already_voted($post_ID)) {
 											echo ' <span title="'.__('I like this post', 'woffice').'" class="like alreadyvoted">

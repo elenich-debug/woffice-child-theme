@@ -4028,3 +4028,80 @@ if (!function_exists('woffice_redirect_to_login')) {
         exit;
     }
 }
+
+// Полностью удаляем скобки на стороне сервера, чтобы избежать мерцания (FOUC) при загрузке страницы
+add_action('template_redirect', function() {
+    // Начинаем буферизацию вывода страницы
+    ob_start(function($html) {
+        // Вырезаем скобки вокруг тега <i> со счетчиком с помощью регулярного выражения
+        $html = preg_replace('/ \(\<i class="cbxwpbkmarktrig-count"\>(.*?)\<\/i\>\)/', ' <i class="cbxwpbkmarktrig-count">$1</i>', $html);
+        return $html;
+    });
+});
+
+// Убираем уродливые скобки у счетчика закладок и делаем его бейджем (для AJAX обновлений)
+add_action('wp_footer', function() {
+    ?>
+    <script>
+    jQuery(document).ready(function($) {
+        function fixBookmarkParen() {
+            $('.cbxwpbkmarktrig-label').each(function() {
+                var html = $(this).html();
+                // Ищем шаблон пробел+скобка+(<i>...) и заменяем на просто <i>...
+                if (html && html.match(/\s?\(\<i/)) {
+                    html = html.replace(/\s?\(\<i/, ' <i');
+                    html = html.replace(/\<\/i\>\)/, '</i>');
+                    $(this).html(html);
+                }
+            });
+        }
+        
+        // Запускаем при загрузке (на случай, если буфер не сработал или подгрузился динамический контент)
+        fixBookmarkParen();
+        
+        // Следим за изменениями, так как плагин обновляет HTML через AJAX
+        if (window.MutationObserver) {
+            var observer = new MutationObserver(function(mutations) {
+                fixBookmarkParen();
+            });
+            $('.cbxwpbkmarkwrap').each(function() {
+                observer.observe(this, { childList: true, subtree: true });
+            });
+        }
+    });
+    </script>
+    <?php
+}, 999);
+
+// Делаем аватарки покупателей в Recent Interest кликабельными (ссылка на профиль)
+add_filter( 'mycred_sell_content_buyer_avatar', 'woffice_child_make_buyer_avatar_clickable', 10, 3 );
+function woffice_child_make_buyer_avatar_clickable( $avatar, $buyer_id, $post_id ) {
+    if ( ! $buyer_id || ! $avatar ) {
+        return $avatar;
+    }
+    
+    // Получаем ссылку на профиль (с поддержкой BuddyPress)
+    $profile_url = '';
+    if ( function_exists('bp_members_get_user_url') ) {
+        $profile_url = bp_members_get_user_url( $buyer_id );
+    } elseif ( function_exists('bp_core_get_user_domain') ) {
+        $profile_url = bp_core_get_user_domain( $buyer_id );
+    } else {
+        $profile_url = get_author_posts_url( $buyer_id );
+    }
+    
+    if ( $profile_url ) {
+        $user_info = get_userdata( $buyer_id );
+        $name = $user_info ? esc_attr( $user_info->display_name ) : '';
+        
+        // Оборачиваем изображение в ссылку с data-tooltip для красивого CSS-оформления
+        return sprintf(
+            '<a href="%s" data-tooltip="%s" class="buyer-avatar-link">%s</a>',
+            esc_url( $profile_url ),
+            $name,
+            $avatar
+        );
+    }
+    
+    return $avatar;
+}
