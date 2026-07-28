@@ -85,17 +85,25 @@ Version: 1.0.3
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important; /* Плавная анимация */
 }
 
-/* Анимация "выпрыгивания" при наведении */
-.mycred-sell-this-buyers a.buyer-avatar-link:hover,
-.mycred-sell-this-buyers > img:hover {
-  transform: translateY(-8px) scale(1.15) !important;
+/* Анимация "выпрыгивания" при наведении. 
+   Мы разделяем анимацию: <a> только поднимается (чтобы тултип не масштабировался и текст не дёргался),
+   а сама <img> увеличивается. */
+.mycred-sell-this-buyers a.buyer-avatar-link:hover {
+  transform: translateY(-8px) !important;
   z-index: 10 !important; /* Чтобы активная аватарка была поверх остальных */
 }
 
-/* Подсветка фирменным зеленым цветом */
-.mycred-sell-this-buyers a.buyer-avatar-link:hover img,
-.mycred-sell-this-buyers > img:hover {
+.mycred-sell-this-buyers a.buyer-avatar-link:hover img {
+  transform: scale(1.15) !important;
   border-color: #82b43f !important; /* Фирменный зеленый цвет Woffice */
+  box-shadow: 0 10px 20px rgba(130, 180, 63, 0.3) !important;
+}
+
+/* Если аватарка без ссылки */
+.mycred-sell-this-buyers > img:hover {
+  transform: translateY(-8px) scale(1.15) !important;
+  z-index: 10 !important;
+  border-color: #82b43f !important;
   box-shadow: 0 10px 20px rgba(130, 180, 63, 0.3) !important;
 }
 
