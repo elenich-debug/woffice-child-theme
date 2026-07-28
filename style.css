@@ -103,9 +103,9 @@ Version: 1.0.3
 .mycred-sell-this-buyers a.buyer-avatar-link::after {
   content: attr(data-tooltip);
   position: absolute;
-  bottom: 100%;
+  bottom: calc(100% + 8px); /* Фиксированный отступ над аватаркой */
   left: 50%;
-  transform: translateX(-50%) translateY(5px);
+  transform: translateX(-50%);
   background: #ffffff;
   color: #82b43f; /* Фирменный зеленый */
   font-size: 0.65rem; /* Уменьшили шрифт по просьбе */
@@ -118,7 +118,7 @@ Version: 1.0.3
   white-space: nowrap;
   opacity: 0;
   visibility: hidden;
-  transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+  transition: opacity 0.2s cubic-bezier(0.25, 0.8, 0.25, 1), visibility 0.2s; /* Анимируем только появление */
   z-index: 20;
   pointer-events: none; /* Чтобы тултип не перехватывал клики */
 }
@@ -127,36 +127,29 @@ Version: 1.0.3
 .mycred-sell-this-buyers a.buyer-avatar-link:hover::after {
   opacity: 1;
   visibility: visible;
-  transform: translateX(-50%) translateY(-8px); /* Всплывает чуть выше */
 }
 
 /* Выравниваем тултип первой аватарки по левому краю, чтобы он не обрезался при прокрутке */
-.mycred-sell-this-buyers a.buyer-avatar-link:first-child::after {
-  left: 0;
-  transform: translateX(0) translateY(5px);
-}
+.mycred-sell-this-buyers a.buyer-avatar-link:first-child::after,
 .mycred-sell-this-buyers a.buyer-avatar-link:first-child:hover::after {
-  transform: translateX(0) translateY(-8px);
+  left: 0;
+  transform: translateX(0);
 }
 
 /* Выравниваем тултип последней аватарки по правому краю */
-.mycred-sell-this-buyers a.buyer-avatar-link:last-child::after {
+.mycred-sell-this-buyers a.buyer-avatar-link:last-child::after,
+.mycred-sell-this-buyers a.buyer-avatar-link:last-child:hover::after {
   left: auto;
   right: 0;
-  transform: translateX(0) translateY(5px);
-}
-.mycred-sell-this-buyers a.buyer-avatar-link:last-child:hover::after {
-  transform: translateX(0) translateY(-8px);
+  transform: translateX(0);
 }
 
 /* Если аватарка всего одна (она и первая, и последняя), используем левое выравнивание */
-.mycred-sell-this-buyers a.buyer-avatar-link:only-child::after {
+.mycred-sell-this-buyers a.buyer-avatar-link:only-child::after,
+.mycred-sell-this-buyers a.buyer-avatar-link:only-child:hover::after {
   left: 0;
   right: auto;
-  transform: translateX(0) translateY(5px);
-}
-.mycred-sell-this-buyers a.buyer-avatar-link:only-child:hover::after {
-  transform: translateX(0) translateY(-8px);
+  transform: translateX(0);
 }
 
 
